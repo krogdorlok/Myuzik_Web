@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['i.scdn.co'], // Spotify album art
+    remotePatterns: [{ protocol: "https", hostname: "i.scdn.co" }], // Spotify album art
   },
 };
 
