@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useLiveListen } from "@/hooks/useLiveListen";
+import { smooth, useLiveListen } from "@/hooks/useLiveListen";
 
 const h = vi.hoisted(() => {
   const capture = {
@@ -58,6 +58,8 @@ describe("useLiveListen", () => {
     act(() => opts.onPrediction(prediction("jazz", 1)));
     act(() => opts.onPrediction(prediction("jazz", 2)));
     act(() => opts.onPrediction(prediction("rock", 3)));
+    expect(result.current.current?.genre).toBe("jazz"); // one rock window isn't enough to flip the EMA
+    act(() => opts.onPrediction(prediction("rock", 4)));
     expect(result.current.status).toBe("live");
     expect(result.current.timeline.map((s) => s.genre)).toEqual(["jazz", "rock"]);
     expect(result.current.current?.genre).toBe("rock");
@@ -120,5 +122,12 @@ describe("useLiveListen", () => {
     expect(h.capture.context.resume).toHaveBeenCalled();
     unmount();
     await waitFor(() => expect(h.capture.stop).toHaveBeenCalled());
+  });
+});
+
+describe("smooth", () => {
+  it("is an exponential moving average seeded by the first frame", () => {
+    expect(smooth(null, { jazz: 1 })).toEqual({ jazz: 1 });
+    expect(smooth({ jazz: 1, rock: 0 }, { jazz: 0, rock: 1 })).toEqual({ jazz: 0.65, rock: 0.35 });
   });
 });

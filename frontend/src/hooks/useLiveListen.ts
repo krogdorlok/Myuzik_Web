@@ -1,5 +1,6 @@
 "use client";
 // Live Listen state: capture → LiveSocket → a transcript-like genre timeline. Pauses while the tab is hidden.
+// Scores are smoothed with an EMA so a single noisy 2.88 s window can't flip the genre.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { startCapture, type Capture, type LiveSource } from "@/lib/liveAudio";
@@ -14,6 +15,18 @@ export interface Segment {
 }
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000/ws/listen";
+const ALPHA = 0.35;
+
+export function smooth(
+  prev: Record<string, number> | null,
+  next: Record<string, number>,
+): Record<string, number> {
+  if (!prev) return next;
+  const genres = new Set([...Object.keys(prev), ...Object.keys(next)]);
+  return Object.fromEntries(
+    [...genres].map((g) => [g, ALPHA * (next[g] ?? 0) + (1 - ALPHA) * (prev[g] ?? 0)]),
+  );
+}
 
 export function useLiveListen() {
   const [status, setStatus] = useState<LiveStatus>("idle");
@@ -48,6 +61,7 @@ export function useLiveListen() {
       setError(null);
       setCurrent(null);
       setTimeline([]);
+      let smoothed: Record<string, number> | null = null;
       const live = new LiveSocket({
         url: WS_URL,
         getTicket: async () => (await api.liveTicket()).ticket,
@@ -60,9 +74,12 @@ export function useLiveListen() {
             capture.current = null;
           }
         },
-        onPrediction: (p) => {
+        onPrediction: (raw) => {
           if (id !== run.current) return;
           const at = (performance.now() - live.stats.startedAt) / 1000;
+          const scores = (smoothed = smooth(smoothed, raw.scores));
+          const genre = Object.keys(scores).reduce((a, b) => (scores[b] > scores[a] ? b : a));
+          const p = { ...raw, scores, genre, confidence: scores[genre] };
           setCurrent(p);
           setStats({ ...live.stats });
           setTimeline((t) => {
