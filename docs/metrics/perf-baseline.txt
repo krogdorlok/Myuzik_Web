@@ -1,0 +1,16 @@
+# First Load JS baseline (before M5 performance work)
+# Command: cd frontend && npm run build
+# Commit: 305ba61  Date: 2026-11-01  Next.js 14.2.35
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    40.2 kB         136 kB
+├ ○ /_not-found                          875 B          88.2 kB
+├ ƒ /api/proxy/[...path]                 0 B                0 B
+├ ○ /history                             2.44 kB         106 kB
+├ ○ /insights                            4.28 kB        91.6 kB
+├ ○ /sign-in                             1.99 kB          98 kB
+└ ○ /sign-up                             2.13 kB        98.1 kB
++ First Load JS shared by all            87.3 kB
+  ├ chunks/117-c86a41b869f6b521.js       31.7 kB
+  ├ chunks/fd9d1056-6922f449a204c2cc.js  53.7 kB
+  └ other shared chunks (total)          1.88 kB
