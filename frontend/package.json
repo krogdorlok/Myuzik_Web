@@ -13,7 +13,8 @@
     "prepare": "cd .. && husky frontend/.husky",
     "measure:live": "MEASURE=1 playwright test e2e/measure-live.spec.ts --project=chromium",
     "test:e2e": "playwright test",
-    "perf": "PERF=1 playwright test e2e/perf.spec.ts --project=chromium"
+    "perf": "PERF=1 playwright test e2e/perf.spec.ts --project=chromium",
+    "test:ci": "vitest run --coverage"
   },
   "dependencies": {
     "next": "^14.1.0",

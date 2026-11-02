@@ -1,8 +1,17 @@
-import { expect, afterEach } from "vitest";
+// Vitest setup: jest-dom matchers, DOM cleanup, and Blob.arrayBuffer (every browser has it; jsdom doesn't).
+import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
-import * as matchers from "@testing-library/jest-dom/matchers";
+import { afterEach } from "vitest";
 
-expect.extend(matchers);
-afterEach(() => {
-  cleanup();
-});
+afterEach(cleanup);
+
+if (typeof FileReader !== "undefined" && !Blob.prototype.arrayBuffer) {
+  Blob.prototype.arrayBuffer = function (this: Blob) {
+    return new Promise<ArrayBuffer>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(this);
+    });
+  };
+}

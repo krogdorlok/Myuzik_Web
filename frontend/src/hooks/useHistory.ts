@@ -32,12 +32,14 @@ export function useHistory(genre: string | undefined, page: number) {
   const remove = useCallback(
     async (id: string) => {
       setData((d) => d && { items: d.items.filter((i) => i.id !== id), total: d.total - 1 });
+      let failure: string | null = null;
       try {
         await api.deletePrediction(id);
       } catch (err) {
-        setError(err instanceof ApiError ? err.message : "Couldn't delete that item.");
+        failure = err instanceof ApiError ? err.message : "Couldn't delete that item.";
       }
       await load();
+      if (failure) setError(failure);
     },
     [load],
   );

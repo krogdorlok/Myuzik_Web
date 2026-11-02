@@ -26,8 +26,7 @@ export function useLiveListen() {
   // Bumped by every start/stop so late results from a superseded run are disposed, never adopted.
   const run = useRef(0);
 
-  const stop = useCallback(async () => {
-    run.current++;
+  const teardown = useCallback(async () => {
     socket.current?.stop();
     socket.current = null;
     setStatus("idle");
@@ -36,10 +35,16 @@ export function useLiveListen() {
     await c?.stop();
   }, []);
 
+  const stop = useCallback(() => {
+    run.current++;
+    return teardown();
+  }, [teardown]);
+
   const start = useCallback(
     async (source: LiveSource) => {
-      await stop();
-      const id = run.current;
+      const id = ++run.current; // claimed synchronously, so a stop() during the awaits below cancels this run
+      await teardown();
+      if (id !== run.current) return;
       setError(null);
       setCurrent(null);
       setTimeline([]);
@@ -79,7 +84,7 @@ export function useLiveListen() {
         capture.current = c;
       } catch (err) {
         if (id !== run.current) return;
-        await stop();
+        await teardown();
         setStatus("error");
         setError(
           err instanceof DOMException && err.name === "NotAllowedError"
@@ -88,7 +93,7 @@ export function useLiveListen() {
         );
       }
     },
-    [stop],
+    [teardown],
   );
 
   useEffect(() => {

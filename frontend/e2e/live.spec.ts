@@ -64,3 +64,24 @@ test("the UI recovers from a dropped socket and resumes the session", async ({ p
   await page.getByText("Connection details").click();
   await expect(page.getByTestId("live-stats")).toHaveAttribute("data-reconnects", "1");
 });
+
+test("microphone mode streams Chromium's synthetic mic to the model", async ({
+  page,
+  context,
+  browserName,
+}) => {
+  test.skip(
+    browserName !== "chromium",
+    "fake capture devices are a Chromium-only flag (see playwright.config.ts)",
+  );
+  await context.grantPermissions(["microphone"]);
+  await signUp(page);
+  await page.goto("/live");
+  await page.getByRole("button", { name: "Start listening" }).click();
+  await expect(page.getByText("Listening", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("list", { name: "Top genres right now" }).getByRole("progressbar"),
+  ).toHaveCount(5, {
+    timeout: 15_000,
+  });
+});
