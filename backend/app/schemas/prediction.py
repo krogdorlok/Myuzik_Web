@@ -1,3 +1,8 @@
+"""Prediction, history and insights response bodies."""
+
+import uuid
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -9,7 +14,7 @@ class SpotifyMatch(BaseModel):
 
 
 class PredictionResult(BaseModel):
-    prediction_id: str
+    prediction_id: uuid.UUID
     genre: str
     confidence: float
     all_scores: dict[str, float]
@@ -17,15 +22,12 @@ class PredictionResult(BaseModel):
 
 
 class HistoryItem(BaseModel):
-    id: str
+    id: uuid.UUID
     filename: str
     genre: str
     confidence: float
     spotify_match: SpotifyMatch | None
-    created_at: str
-
-    class Config:
-        from_attributes = True
+    created_at: datetime
 
 
 class HistoryResponse(BaseModel):
@@ -33,7 +35,13 @@ class HistoryResponse(BaseModel):
     total: int
 
 
+class GenreShare(BaseModel):
+    genre: str
+    count: int
+    percentage: float
+
+
 class TasteProfile(BaseModel):
     total_analyses: int
-    top_genre: str
-    genre_breakdown: list[dict[str, int | float]]
+    top_genre: str | None
+    genre_breakdown: list[GenreShare]

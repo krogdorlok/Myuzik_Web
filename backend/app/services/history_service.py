@@ -1,92 +1,67 @@
-from sqlalchemy import delete, desc, func, select
+"""Query, delete and aggregate a user's predictions."""
+
+import uuid
+
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.prediction import Prediction
-from app.schemas.prediction import HistoryItem, TasteProfile
+from app.schemas.prediction import GenreShare, HistoryItem, SpotifyMatch, TasteProfile
+
+
+def _to_item(p: Prediction) -> HistoryItem:
+    match = (
+        SpotifyMatch(
+            track_name=p.spotify_track_name,
+            artist=p.spotify_artist or "",
+            album=p.spotify_album or "",
+            album_art_url=p.spotify_album_art_url or "",
+        )
+        if p.spotify_track_name
+        else None
+    )
+    return HistoryItem(
+        id=p.id,
+        filename=p.filename,
+        genre=p.genre,
+        confidence=p.confidence,
+        spotify_match=match,
+        created_at=p.created_at,
+    )
 
 
 async def get_history(
-    user_id: str,
-    genre: str | None = None,
-    limit: int = 20,
-    offset: int = 0,
-    db: AsyncSession | None = None,
+    db: AsyncSession, user_id: uuid.UUID, genre: str | None, limit: int, offset: int
 ) -> tuple[list[HistoryItem], int]:
-    query = select(Prediction).where(Prediction.user_id == user_id)
-
-    if genre:
-        query = query.where(Prediction.genre == genre)
-
-    total_query = select(func.count()).select_from(query.subquery())
-    total = (await db.execute(total_query)).scalar() or 0
-
-    query = query.order_by(desc(Prediction.created_at)).offset(offset).limit(limit)
-    result = await db.execute(query)
-    predictions = result.scalars().all()
-
-    items = [
-        HistoryItem(
-            id=p.id,
-            filename=p.filename,
-            genre=p.genre,
-            confidence=p.confidence,
-            spotify_match=(
-                {
-                    "track_name": p.spotify_track_name,
-                    "artist": p.spotify_artist,
-                    "album": p.spotify_album,
-                    "album_art_url": p.spotify_album_art_url,
-                }
-                if p.spotify_track_name
-                else None
-            ),
-            created_at=p.created_at.isoformat(),
-        )
-        for p in predictions
-    ]
-
-    return items, total
-
-
-async def delete_prediction(prediction_id: str, user_id: str, db: AsyncSession) -> bool:
-    result = await db.execute(
-        delete(Prediction).where(
-            Prediction.id == prediction_id,
-            Prediction.user_id == user_id,
-        )
+    where = [Prediction.user_id == user_id] + ([Prediction.genre == genre] if genre else [])
+    total = await db.scalar(select(func.count()).select_from(Prediction).where(*where))
+    rows = await db.scalars(
+        select(Prediction).where(*where).order_by(Prediction.created_at.desc()).offset(offset).limit(limit)
     )
+    return [_to_item(p) for p in rows], total or 0
+
+
+async def delete_prediction(db: AsyncSession, user_id: uuid.UUID, prediction_id: uuid.UUID) -> bool:
+    result = await db.execute(delete(Prediction).where(Prediction.id == prediction_id, Prediction.user_id == user_id))
     await db.commit()
     return result.rowcount > 0
 
 
-async def get_taste_profile(user_id: str, db: AsyncSession) -> TasteProfile:
-    query = (
-        select(
-            Prediction.genre,
-            func.count().label("count"),
+async def get_taste_profile(db: AsyncSession, user_id: uuid.UUID) -> TasteProfile:
+    count = func.count().label("count")
+    rows = (
+        await db.execute(
+            select(Prediction.genre, count)
+            .where(Prediction.user_id == user_id)
+            .group_by(Prediction.genre)
+            .order_by(count.desc())
         )
-        .where(Prediction.user_id == user_id)
-        .group_by(Prediction.genre)
-        .order_by(desc("count"))
-    )
-
-    result = await db.execute(query)
-    rows = result.all()
-
-    total = sum(row.count for row in rows)
-    top_genre = rows[0].genre if rows else "Unknown"
-
-    genre_breakdown = [
-        {
-            "genre": row.genre,
-            "count": row.count,
-            "percentage": round((row.count / total * 100), 2) if total else 0,
-        }
-        for row in rows
-    ]
-
+    ).all()
+    total = sum(r.count for r in rows)
     return TasteProfile(
         total_analyses=total,
-        top_genre=top_genre,
-        genre_breakdown=genre_breakdown,
+        top_genre=rows[0].genre if rows else None,
+        genre_breakdown=[
+            GenreShare(genre=r.genre, count=r.count, percentage=round(r.count / total * 100, 1)) for r in rows
+        ],
     )

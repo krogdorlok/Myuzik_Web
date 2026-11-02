@@ -1,31 +1,34 @@
-import pytest
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import StaticPool
+"""Test harness: in-memory SQLite, a fake genre model, and an authenticated client factory."""
 
-from app.database import Base, get_db
-from app.main import app
+import io
+import os
 
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-
-
-engine = create_async_engine(
-    TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
+os.environ.update(
+    DATABASE_URL="sqlite+aiosqlite:///:memory:",
+    JWT_SECRET="test-secret-test-secret-test-secret",
+    FRONTEND_URL="http://localhost:3000",
+    SPOTIFY_CLIENT_ID="",
 )
-TestingSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+
+import numpy as np  # noqa: E402
+import pytest  # noqa: E402
+import soundfile as sf  # noqa: E402
+from httpx import ASGITransport, AsyncClient  # noqa: E402
+
+from app.database import Base, engine  # noqa: E402
+from app.main import app  # noqa: E402
 
 
-async def override_get_db():
-    async with TestingSessionLocal() as session:
-        yield session
+class FakeModel:
+    labels = ["blues", "jazz", "rock"]
+
+    def classify(self, waveform: np.ndarray) -> dict[str, float]:
+        assert waveform.ndim == 1
+        return {"blues": 0.1, "jazz": 0.7, "rock": 0.2}
 
 
-app.dependency_overrides[get_db] = override_get_db
-
-
-@pytest.fixture(scope="function", autouse=True)
-async def setup_db():
+@pytest.fixture(autouse=True)
+async def db_schema():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
@@ -34,6 +37,24 @@ async def setup_db():
 
 
 @pytest.fixture
-async def db() -> AsyncSession:
-    async with TestingSessionLocal() as session:
-        yield session
+async def client():
+    app.state.model = FakeModel()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+
+
+@pytest.fixture
+def register(client: AsyncClient):
+    async def _register(email: str = "ada@example.com") -> dict[str, str]:
+        r = await client.post("/api/v1/auth/register", json={"name": "Ada", "email": email, "password": "password123"})
+        assert r.status_code == 201, r.text
+        return {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+    return _register
+
+
+@pytest.fixture
+def wav_bytes() -> bytes:
+    buf = io.BytesIO()
+    sf.write(buf, np.zeros(16_000, dtype=np.float32), 16_000, format="WAV")
+    return buf.getvalue()

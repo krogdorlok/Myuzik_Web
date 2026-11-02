@@ -1,18 +1,21 @@
-from pydantic_settings import BaseSettings
+"""Typed settings loaded from the environment / .env."""
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    database_url: str
-    jwt_secret: str
-    jwt_expire_days: int = 7
-    spotify_client_id: str
-    spotify_client_secret: str
-    frontend_url: str
-    model_path: str = "./data/processed/classifier_model.pkl"
-    log_level: str = "INFO"
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    class Config:
-        env_file = ".env"
+    database_url: str
+    jwt_secret: str = Field(min_length=32)
+    jwt_expire_days: int = 7
+    spotify_client_id: str = ""
+    spotify_client_secret: str = ""
+    frontend_url: str
+    vggish_path: str = "./models/vggish.tflite"
+    classifier_path: str = "./app/ml/classifier.npz"
+    log_level: str = "INFO"
 
 
 settings = Settings()

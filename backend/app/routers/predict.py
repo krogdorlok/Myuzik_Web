@@ -1,58 +1,50 @@
-from typing import Annotated
+"""Upload an audio file and classify its genre."""
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, HTTPException, UploadFile, status
+from fastapi.concurrency import run_in_threadpool
 
-from app.database import get_db
-from app.dependencies import get_current_user
-from app.models.user import User
+from app.dependencies import DB, CurrentUser, Model
+from app.ml.myuzik import decode_clip
 from app.schemas.prediction import PredictionResult
-from app.services.predict_service import run_prediction_service
+from app.services.predict_service import save_prediction
 
 router = APIRouter(prefix="/predict", tags=["predict"])
 
-ALLOWED_MIME_TYPES = {
+MAX_FILE_SIZE = 50 * 1024 * 1024
+ALLOWED_TYPES = {
     "audio/mpeg",
+    "audio/mp3",
     "audio/wav",
-    "audio/flac",
-    "audio/ogg",
-    "audio/x-flac",
     "audio/x-wav",
+    "audio/wave",
+    "audio/flac",
+    "audio/x-flac",
+    "audio/ogg",
 }
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 
 
-@router.post("", response_model=PredictionResult, status_code=status.HTTP_201_CREATED)
-async def predict(
-    file: UploadFile,
-    filename_hint: str | None = None,
-    current_user: Annotated[User, Depends(get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
-):
-    if file.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Invalid file type. Allowed: {', '.join(ALLOWED_MIME_TYPES)}",
-        )
+def is_audio(head: bytes) -> bool:
+    """Magic-byte sniff: ID3 / MPEG frame sync, RIFF-WAVE, FLAC, Ogg."""
+    return (
+        head.startswith((b"ID3", b"fLaC", b"OggS"))
+        or (head[:4] == b"RIFF" and head[8:12] == b"WAVE")
+        or (len(head) > 1 and head[0] == 0xFF and head[1] & 0xE0 == 0xE0)
+    )
 
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"File too large. Max size: {MAX_FILE_SIZE / 1024 / 1024}MB",
-        )
 
-    import os
-    import tempfile
+@router.post("", status_code=status.HTTP_201_CREATED)
+async def predict(file: UploadFile, user: CurrentUser, model: Model, db: DB) -> PredictionResult:
+    data = await file.read(MAX_FILE_SIZE + 1)
+    if len(data) > MAX_FILE_SIZE:
+        raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, "File exceeds 50 MB")
+    if file.content_type not in ALLOWED_TYPES or not is_audio(data[:12]):
+        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Upload an MP3, WAV, FLAC or OGG file")
 
-    filename = filename_hint or file.filename
-
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".tmp") as tmp:
-        tmp.write(content)
-        tmp_path = tmp.name
+    def classify() -> dict[str, float]:
+        return model.classify(decode_clip(data))
 
     try:
-        result = await run_prediction_service(tmp_path, filename, current_user.id, db)
-        return result
-    finally:
-        os.unlink(tmp_path)
+        scores = await run_in_threadpool(classify)
+    except RuntimeError as e:  # soundfile raises LibsndfileError (a RuntimeError) on undecodable audio
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Could not decode audio") from e
+    return await save_prediction(db, user.id, (file.filename or "upload")[:255], scores)

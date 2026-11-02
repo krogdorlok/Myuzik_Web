@@ -1,0 +1,7 @@
+.env
+models/
+tests/
+scripts/
+**/__pycache__/
+.ruff_cache/
+.pytest_cache/

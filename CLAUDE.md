@@ -38,7 +38,7 @@ JWT_EXPIRE_DAYS=7
 SPOTIFY_CLIENT_ID=your_spotify_client_id
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 FRONTEND_URL=http://localhost:3000
-MODEL_PATH=./data/processed/classifier_model.pkl
+VGGISH_PATH=./models/vggish.tflite
 LOG_LEVEL=INFO
 ```
 
@@ -236,9 +236,10 @@ interface TasteProfile {
 - Request logging middleware
 
 ### ML Wrapper
-- Import existing `predict_genre` function - do NOT duplicate ML logic
-- Accept file path, return typed dict
-- Model loaded once at startup
+- VGGish runs as a LiteRT flatbuffer (`backend/models/vggish.tflite`, bit-exact with the TF SavedModel); no TensorFlow at serve time
+- Logistic regression weights live in `backend/app/ml/classifier.npz`, evaluated in NumPy (no pickle at serve time)
+- Both artifacts are rebuilt by `backend/scripts/export_model.py`; TF Hub no longer serves VGGish, so the tflite ships as a GitHub release asset
+- Inference runs in a threadpool behind a lock; model loaded once at startup
 
 ### Spotify Service
 - Client Credentials flow
@@ -287,16 +288,7 @@ Download from: `https://source.unsplash.com/800x400/?{genre}+music`
 ## Deployment
 
 ### Railway (Backend)
-```dockerfile
-FROM python:3.11-slim
-RUN apt-get update && apt-get install -y libsndfile1 ffmpeg libgomp1
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-EXPOSE 8000
-CMD alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
-```
+See `backend/Dockerfile` (uv install from `pyproject.toml`, checksum-pinned VGGish download, non-root user).
 
 **Note**: `--workers 1` is intentional - VGGish on `app.state` is not process-safe.
 
