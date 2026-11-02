@@ -37,3 +37,8 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Test output
+test-results/
+playwright-report/
+coverage/

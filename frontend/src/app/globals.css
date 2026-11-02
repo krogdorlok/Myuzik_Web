@@ -3,53 +3,26 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --color-background: #0a0a0a;
-    --color-surface: #111111;
-    --color-border: #1e1e1e;
-    --color-text: #f0ede6;
-    --color-muted: #666666;
-    --color-accent: #c8ff57;
-    --color-accent-dim: #6a8a30;
-    --color-error: #ff5757;
-  }
-
-  * {
-    @apply border-border;
+  html {
+    color-scheme: dark;
   }
 
   body {
     @apply bg-background text-text;
-    font-feature-settings:
-      "rlig" 1,
-      "calt" 1;
   }
 
-  input,
-  button {
-    @apply font-sans;
-  }
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    @apply font-display;
+  :focus-visible {
+    @apply outline outline-2 outline-offset-2 outline-accent;
   }
 }
 
-@layer utilities {
-  .text-accent {
-    color: var(--color-accent);
-  }
-
-  .bg-accent {
-    background-color: var(--color-accent);
-  }
-
-  .border-accent {
-    border-color: var(--color-accent);
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

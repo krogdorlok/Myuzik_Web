@@ -1,11 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  content: [
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
+  content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
@@ -13,22 +9,26 @@ const config: Config = {
         surface: "#111111",
         border: "#1e1e1e",
         text: "#f0ede6",
-        muted: "#666666",
+        muted: "#8a8a8a",
         accent: "#c8ff57",
         "accent-dim": "#6a8a30",
         error: "#ff5757",
       },
       fontFamily: {
-        display: ["Syne", "sans-serif"],
-        sans: ["DM Sans", "sans-serif"],
+        display: ["var(--font-syne)", "sans-serif"],
+        sans: ["var(--font-dm-sans)", "sans-serif"],
       },
-      borderRadius: {
-        none: "0",
-        sm: "4px",
-        DEFAULT: "8px",
-        md: "8px",
-        lg: "12px",
-        logo: "6px",
+      borderRadius: { sm: "4px", DEFAULT: "8px", md: "8px", lg: "12px", logo: "6px" },
+      keyframes: {
+        "page-in": {
+          from: { opacity: "0", transform: "translateY(8px)" },
+          to: { opacity: "1", transform: "none" },
+        },
+        "bar-in": { from: { transform: "scaleX(0)" }, to: { transform: "scaleX(1)" } },
+      },
+      animation: {
+        "page-in": "page-in 200ms ease-out both",
+        "bar-in": "bar-in 500ms cubic-bezier(0.2, 0.8, 0.2, 1) both",
       },
     },
   },

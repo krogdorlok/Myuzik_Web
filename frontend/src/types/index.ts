@@ -1,16 +1,17 @@
+// Shapes returned by the FastAPI backend (mirrors backend/app/schemas).
+export interface SpotifyMatch {
+  track_name: string;
+  artist: string;
+  album: string;
+  album_art_url: string;
+}
+
 export interface PredictionResult {
   prediction_id: string;
   genre: string;
   confidence: number;
   all_scores: Record<string, number>;
   spotify_match: SpotifyMatch | null;
-}
-
-export interface SpotifyMatch {
-  track_name: string;
-  artist: string;
-  album: string;
-  album_art_url: string;
 }
 
 export interface HistoryItem {
@@ -41,14 +42,6 @@ export interface TokenResponse {
 
 export interface TasteProfile {
   total_analyses: number;
-  top_genre: string;
-  genre_breakdown: Array<{
-    genre: string;
-    count: number;
-    percentage: number;
-  }>;
-}
-
-export interface ApiError {
-  detail: string;
+  top_genre: string | null;
+  genre_breakdown: { genre: string; count: number; percentage: number }[];
 }

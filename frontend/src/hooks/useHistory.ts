@@ -1,69 +1,46 @@
 "use client";
+// Paged, filterable history. A generation counter drops responses from superseded queries; deletes are
+// optimistic and always reconcile by refetching the current page.
+import { useCallback, useEffect, useRef, useState } from "react";
+import { api, ApiError } from "@/lib/api";
+import type { HistoryResponse } from "@/types";
 
-import { useState, useCallback } from "react";
-import type { HistoryResponse, HistoryItem } from "@/types";
-import { api } from "@/lib/api";
+export const PAGE_SIZE = 10;
 
-interface UseHistoryReturn {
-  items: HistoryItem[];
-  total: number;
-  isLoading: boolean;
-  error: string | null;
-  fetch: (params?: { genre?: string; limit?: number; offset?: number }) => Promise<void>;
-  deleteItem: (id: string) => Promise<void>;
-  reset: () => void;
-}
-
-export function useHistory(): UseHistoryReturn {
-  const [data, setData] = useState<HistoryResponse>({ items: [], total: 0 });
-  const [isLoading, setIsLoading] = useState(false);
+export function useHistory(genre: string | undefined, page: number) {
+  const [data, setData] = useState<HistoryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const generation = useRef(0);
 
-  const fetch = useCallback(
-    async (params?: { genre?: string; limit?: number; offset?: number }) => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await api.history.list(params);
-        setData(response);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch history");
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [],
-  );
-
-  const deleteItem = useCallback(async (id: string) => {
-    setIsLoading(true);
+  const load = useCallback(async () => {
+    const id = ++generation.current;
     setError(null);
     try {
-      await api.history.delete(id);
-      setData((prev) => ({
-        items: prev.items.filter((item) => item.id !== id),
-        total: prev.total - 1,
-      }));
+      const result = await api.history({ genre, limit: PAGE_SIZE, offset: page * PAGE_SIZE });
+      if (id === generation.current) setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete item");
-      throw err;
-    } finally {
-      setIsLoading(false);
+      if (id === generation.current)
+        setError(err instanceof ApiError ? err.message : "Couldn't load your history.");
     }
-  }, []);
+  }, [genre, page]);
 
-  const reset = useCallback(() => {
-    setData({ items: [], total: 0 });
-    setError(null);
-  }, []);
+  useEffect(() => {
+    setData(null);
+    void load();
+  }, [load]);
 
-  return {
-    items: data.items,
-    total: data.total,
-    isLoading,
-    error,
-    fetch,
-    deleteItem,
-    reset,
-  };
+  const remove = useCallback(
+    async (id: string) => {
+      setData((d) => d && { items: d.items.filter((i) => i.id !== id), total: d.total - 1 });
+      try {
+        await api.deletePrediction(id);
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Couldn't delete that item.");
+      }
+      await load();
+    },
+    [load],
+  );
+
+  return { data, error, remove, retry: load };
 }

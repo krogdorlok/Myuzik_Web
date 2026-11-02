@@ -1,23 +1,30 @@
-import { describe, it, expect } from "vitest";
-import { cn, formatBytes } from "@/lib/utils";
+import { describe, expect, it } from "vitest";
+import { cn, formatBytes, getInitials } from "@/lib/utils";
 
-describe("utils", () => {
-  describe("cn", () => {
-    it("should join class names", () => {
-      expect(cn("foo", "bar")).toBe("foo bar");
-    });
-
-    it("should filter falsy values", () => {
-      expect(cn("foo", false, "bar", null, "baz")).toBe("foo bar baz");
-    });
+describe("cn", () => {
+  it("joins truthy class names", () => {
+    expect(cn("foo", false, "bar", null, undefined, "baz")).toBe("foo bar baz");
   });
+});
 
-  describe("formatBytes", () => {
-    it("should format bytes", () => {
-      expect(formatBytes(0)).toBe("0 B");
-      expect(formatBytes(1024)).toBe("1 KB");
-      expect(formatBytes(1024 * 1024)).toBe("1 MB");
-      expect(formatBytes(1536)).toBe("1.5 KB");
-    });
+describe("formatBytes", () => {
+  it.each([
+    [0, "0 B"],
+    [1024, "1 KB"],
+    [1536, "1.5 KB"],
+    [1024 ** 2, "1 MB"],
+    [1024 ** 5, "1048576 GB"],
+  ])("%d → %s", (bytes, expected) => {
+    expect(formatBytes(bytes)).toBe(expected);
+  });
+});
+
+describe("getInitials", () => {
+  it.each([
+    ["Ada Lovelace", "AL"],
+    ["  Grace   Brewster  Hopper ", "GH"],
+    ["Cher", "CH"],
+  ])("%s → %s", (name, expected) => {
+    expect(getInitials(name)).toBe(expected);
   });
 });
