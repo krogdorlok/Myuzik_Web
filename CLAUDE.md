@@ -46,69 +46,35 @@ LOG_LEVEL=INFO
 ```
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 BACKEND_URL=http://localhost:8000
+NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws/listen
 ```
 
 ## Project Structure
 
 ```
-myuzik/
-├── frontend/
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── (auth)/
-│   │   │   │   ├── sign-in/page.tsx
-│   │   │   │   └── sign-up/page.tsx
-│   │   │   ├── (app)/
-│   │   │   │   ├── layout.tsx
-│   │   │   │   ├── page.tsx
-│   │   │   │   ├── history/page.tsx
-│   │   │   │   └── insights/page.tsx
-│   │   │   ├── api/proxy/[...path]/route.ts
-│   │   │   └── layout.tsx
-│   │   ├── components/
-│   │   │   ├── ui/ (Button, Input, Badge, Card)
-│   │   │   ├── auth/ (SignInForm, SignUpForm)
-│   │   │   ├── upload/ (DropZone, UploadProgress)
-│   │   │   ├── result/ (ResultCard, GenreBar, AlbumArt)
-│   │   │   ├── history/ (HistoryList, HistoryItem)
-│   │   │   ├── insights/ (TasteProfile, GenreDonut)
-│   │   │   └── layout/ (Nav, Logo, UserAvatar)
-│   │   ├── hooks/
-│   │   │   ├── useAuth.ts
-│   │   │   ├── useUpload.ts
-│   │   │   └── useHistory.ts
-│   │   ├── lib/
-│   │   │   ├── api.ts
-│   │   │   ├── auth.ts
-│   │   │   └── utils.ts
-│   │   └── types/index.ts
-│   ├── public/genre-images/ (10 jpg files)
-│   ├── .env.local.example
-│   ├── next.config.ts
-│   ├── tailwind.config.ts
-│   ├── tsconfig.json
-│   ├── eslint.config.mjs
-│   ├── prettier.config.mjs
-│   └── package.json
-│
-└── backend/
-    ├── app/
-    │   ├── main.py
-    │   ├── config.py
-    │   ├── database.py
-    │   ├── models/ (user.py, prediction.py)
-    │   ├── schemas/ (auth.py, prediction.py, user.py)
-    │   ├── routers/ (auth.py, predict.py, history.py, insights.py)
-    │   ├── services/ (auth_service.py, predict_service.py, spotify_service.py, history_service.py)
-    │   ├── ml/myuzik.py
-    │   └── dependencies.py
-    ├── tests/ (test_auth.py, test_predict.py, test_spotify.py, test_history.py)
-    ├── alembic/
-    ├── alembic.ini
-    ├── .env.example
-    ├── Dockerfile
-    ├── requirements.txt
-    └── ruff.toml
+frontend/
+├── src/
+│   ├── app/            (auth)/sign-in, (auth)/sign-up, (app)/{page,history,insights,live}, api/{auth/[action],proxy/[...path],vitals}
+│   ├── components/     auth/AuthForm · upload/{DropZone,UploadProgress} · result/{ResultCard,GenreBar}
+│   │                   history/{HistoryList,HistoryItem} · insights/{TasteProfile,GenreDonut}
+│   │                   live/{SourcePicker,LiveTimeline,LiveStats} · layout/{Nav,Logo,WebVitals} · ui/{Button,Input,Skeleton}
+│   ├── hooks/          useUpload · useHistory · useLiveListen
+│   ├── lib/            api · audio · genres · liveSocket · liveAudio · logger · utils · server/backend (server-only)
+│   ├── types/          index (REST shapes) · live (WebSocket protocol, zod)
+│   ├── middleware.ts   nonce CSP + signed-out redirect
+│   └── tests/          Vitest + RTL
+├── public/worklets/pcm-processor.js   AudioWorklet resampler
+├── e2e/                Playwright (5 projects) + perf/measure scripts
+└── scripts/test-metrics.mjs
+backend/
+├── app/                main · config · database · dependencies · ml/myuzik (LiteRT + NumPy) · models · schemas
+│                       routers/{auth,predict,history,insights,live} · services/{auth,predict,history,spotify}
+├── alembic/versions/0001_initial.py
+├── scripts/            export_model.py (TF → LiteRT, pickle → npz) · eval.py (GTZAN accuracy)
+├── tests/
+└── pyproject.toml · Dockerfile · railway.toml
+docs/metrics/*.json     every published number, with the command that produced it
+docs/notes/M*.md        per-milestone summary + trade-offs
 ```
 
 ## Design System
@@ -119,7 +85,7 @@ background:  #0a0a0a
 surface:     #111111
 border:      #1e1e1e
 text:        #f0ede6
-muted:       #666666
+muted:       #8a8a8a (raised from #666 for 4.5:1 contrast)
 accent:      #c8ff57 (lime green - CTA, top confidence, logo)
 accent-dim:  #6a8a30
 error:       #ff5757
@@ -200,12 +166,11 @@ interface User {
   id: string;
   name: string;
   email: string;
-  created_at: string;
 }
 
 interface TasteProfile {
   total_analyses: number;
-  top_genre: string;
+  top_genre: string | null;
   genre_breakdown: { genre: string; count: number; percentage: number }[];
 }
 ```
@@ -226,6 +191,10 @@ interface TasteProfile {
 
 **Insights**
 - `GET /api/v1/insights/taste-profile` - Get user's taste profile (auth required)
+
+**Live**
+- `POST /api/v1/live/ticket` - Single-use 30 s WebSocket ticket (auth required)
+- `WS /ws/listen?ticket=&session=` - Binary `<u32 seq><u32 clientMs><15360 × i16>` in, JSON predictions out
 
 ## Key Implementation Notes
 
@@ -248,9 +217,9 @@ interface TasteProfile {
 - Never raise on Spotify errors - return None silently
 
 ### Frontend API Proxy
-- All calls via `/api/proxy/[...path]/route.ts`
-- Reads `httpOnly` cookie, forwards as `Authorization: Bearer`
-- Keeps JWT out of JS-accessible storage
+- Login/register/logout via `/api/auth/[action]` (sets/clears the httpOnly cookie; same-origin JSON only)
+- Everything else via `/api/proxy/[...path]`: route allow-list, header allow-list, cookie → `Authorization: Bearer`
+- Token-issuing endpoints are not reachable through the proxy, so the JWT never reaches JS
 
 ### Logo Component
 ```tsx
@@ -259,12 +228,9 @@ interface TasteProfile {
 </span>
 ```
 
-## Genre Images
+## Genre Art
 
-Place in `/frontend/public/genre-images/`:
-`blues.jpg`, `classical.jpg`, `country.jpg`, `disco.jpg`, `hiphop.jpg`, `jazz.jpg`, `metal.jpg`, `pop.jpg`, `reggae.jpg`, `rock.jpg`
-
-Download from: `https://source.unsplash.com/800x400/?{genre}+music`
+Generated per-genre CSS gradients (`src/lib/genres.ts`); no image assets (the Unsplash Source API is gone).
 
 ## Build Order
 
@@ -293,8 +259,8 @@ See `backend/Dockerfile` (uv install from `pyproject.toml`, checksum-pinned VGGi
 **Note**: `--workers 1` is intentional - VGGish on `app.state` is not process-safe.
 
 ### Vercel (Frontend)
-- Set `BACKEND_URL` env var in dashboard
-- No rewrites needed - proxy route handles it
+- Root directory `frontend`; set `BACKEND_URL` and `NEXT_PUBLIC_WS_URL` in the dashboard
+- No rewrites needed - proxy route handles REST; the WebSocket connects to the backend directly with a ticket
 
 ## Future Extensibility (Schema-Ready, Not Implemented)
 

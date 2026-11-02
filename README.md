@@ -1,143 +1,94 @@
 # MYUZIK
 
-A full-stack music genre recognition web application powered by Spotify API and machine learning.
+**Hear what genre you're listening to.** Upload a track for a full genre breakdown, or turn on **Live Listen** and watch predictions stream in about once a second while music plays.
 
-## Tech Stack
+![Live Listen classifying a jazz → rock → classical mix in real time](docs/demo.gif)
 
-**Backend:**
-- Python 3.11 + FastAPI
-- SQLAlchemy (async) + PostgreSQL
-- Alembic for migrations
-- JWT authentication
-- Spotify Web API integration
+Next.js 14 · TypeScript (strict) · Tailwind · AudioWorklet · WebSockets · FastAPI · LiteRT · PostgreSQL · Playwright · Vitest
 
-**Frontend:**
-- Next.js 14 (App Router)
-- TypeScript (strict mode)
-- Tailwind CSS
-- Framer Motion
-- Zustand for state management
+## What's interesting here
 
-## Project Structure
+- **Real-time audio in the browser.** An AudioWorklet runs on the audio thread. It downmixes the input, applies a windowed-sinc anti-alias filter, resamples to 16 kHz and sends Int16 frames of 0.96 s each, one VGGish window. A `LiveSocket` class streams them over a WebSocket. It reconnects with exponential backoff and jitter, resumes the server-side session, and drops frames when the socket backs up instead of queueing stale audio. Latency is measured per frame by matching the sequence number the server echoes back.
+- **A transcript-style UI for a live signal.** The timeline follows the newest segment unless you scroll up, then offers *Jump to live*. Scores pass through an exponential moving average so one noisy window can't flip the genre. Genre changes, and nothing else, are announced to screen readers through `aria-live`.
+- **Security that holds up when someone pokes at it:**
+  - The JWT lives only in an httpOnly, SameSite=Lax cookie set by a Next.js route handler.
+  - The proxy only forwards allow-listed routes, so `auth%2Flogin` can't be smuggled through.
+  - Login is CSRF-proof: auth routes accept only same-origin JSON.
+  - Every page gets a per-request nonce Content-Security-Policy.
+  - The WebSocket authenticates with a single-use, 30-second ticket and checks the `Origin` header, so the JWT never appears in a URL.
+  - Uploads are checked by magic bytes, MIME type and size on both client and server.
+- **A leaner model server.** VGGish is converted to a LiteRT flatbuffer that matches TensorFlow's output, and the classifier is plain NumPy weights. The server ships with no TensorFlow and no pickle files. A live window runs in 14.8 ms, against 33 ms on TensorFlow.
+- **Every number below is measured, not claimed.** Each one is produced by a script in this repo and stored in [`docs/metrics/`](docs/metrics).
 
-```
-myuzik/
-├── backend/          # FastAPI backend
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── config.py
-│   │   ├── database.py
-│   │   ├── models/
-│   │   ├── schemas/
-│   │   ├── routers/
-│   │   ├── services/
-│   │   ├── ml/
-│   │   └── dependencies.py
-│   ├── tests/
-│   ├── alembic/
-│   ├── requirements.txt
-│   └── Dockerfile
-└── frontend/         # Next.js frontend
-    ├── src/
-    │   ├── app/
-    │   ├── components/
-    │   ├── hooks/
-    │   ├── lib/
-    │   └── types/
-    ├── public/
-    │   └── genre-images/
-    └── package.json
-```
+## Measured
 
-## Environment Setup
+<!-- metrics:start -->
+<!-- metrics:end -->
 
-### Backend (.env)
-```
-DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/myuzik
-JWT_SECRET=your-secret-key-min-32-chars
-JWT_EXPIRE_DAYS=7
-SPOTIFY_CLIENT_ID=your_client_id
-SPOTIFY_CLIENT_SECRET=your_client_secret
-FRONTEND_URL=http://localhost:3000
-MODEL_PATH=./data/processed/classifier_model.pkl
-LOG_LEVEL=INFO
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Browser
+    UI[React UI] --> Hook[useLiveListen]
+    Mic[Mic / audio element] --> W[AudioWorklet<br/>low-pass → 16 kHz → Int16]
+    W -- 0.96 s frames --> S[LiveSocket<br/>backoff · resume · backpressure]
+  end
+  subgraph Vercel [Next.js on Vercel]
+    MW[middleware<br/>nonce CSP · auth redirect]
+    Auth["/api/auth/*<br/>sets httpOnly cookie"]
+    Proxy["/api/proxy/*<br/>cookie → Bearer, allow-list"]
+  end
+  subgraph Railway [FastAPI on Railway]
+    REST["REST /api/v1"]
+    WS["WS /ws/listen<br/>ticket · origin · rate limit"]
+    M[VGGish LiteRT → NumPy LR]
+    DB[(PostgreSQL)]
+  end
+  UI -- fetch --> Auth & Proxy
+  Proxy --> REST
+  S -- "wss + one-time ticket" --> WS
+  REST --> M & DB
+  WS --> M
 ```
 
-### Frontend (.env.local)
-```
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-BACKEND_URL=http://localhost:8000
-```
+The browser never sees the JWT. REST calls go through the same-origin proxy, which turns the cookie into a `Bearer` header on the server. Vercel route handlers can't proxy WebSockets, so the socket connects straight to FastAPI using a short-lived ticket that the browser fetches through that proxy.
 
-## Development
+## Run it locally
 
-### Backend
+Requirements: Node 22+, Python 3.11, PostgreSQL, and `vggish.tflite` (from the GitHub release, or rebuilt with `backend/scripts/export_model.py`).
+
 ```bash
+# backend
 cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-alembic upgrade head
-uvicorn app.main:app --reload
-```
+cp .env.example .env            # set DATABASE_URL and JWT_SECRET (openssl rand -hex 32)
+uv venv -p 3.11 && uv pip install -r pyproject.toml --extra dev
+curl -fLo models/vggish.tflite --create-dirs https://github.com/krogdorlok/myuzik-web/releases/download/vggish-v1/vggish.tflite
+alembic upgrade head && uvicorn app.main:app --port 8000 --ws-max-size 65536
 
-### Frontend
-```bash
+# frontend
 cd frontend
-npm install
-npm run dev
+cp .env.local.example .env.local
+npm install && npm run dev      # http://localhost:3000
 ```
 
-## Features
+## Tests
 
-- **Authentication**: JWT-based with secure httpOnly cookies
-- **Genre Recognition**: ML-powered audio classification
-- **Spotify Integration**: Track metadata enrichment
-- **History**: View and manage past predictions
-- **Insights**: Taste profile and genre breakdown
+| Command | What it runs |
+| --- | --- |
+| `cd backend && pytest` | API, auth, upload validation, history ownership, WebSocket protocol and limits, mocked Spotify, real-model checks |
+| `cd frontend && npm run test:ci` | Vitest + React Testing Library for every component and hook; fails below 85% line or branch coverage |
+| `cd frontend && npm run test:e2e` | Playwright on Chromium, Firefox, WebKit, Pixel 7 and iPhone 14: auth and security, upload, history, insights, Live Listen with a scripted disconnect, and axe on every page |
+| `npm run perf` / `npm run measure:live` | Lighthouse mobile budgets and First Load JS; live latency and recovery numbers. Both write to `docs/metrics/` |
 
-## API Endpoints
+CI runs all of this on every pull request ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
-### Auth
-- `POST /api/v1/auth/register` - Create account
-- `POST /api/v1/auth/login` - Login
-- `GET /api/v1/auth/me` - Get current user
+## Deploy
 
-### Predict
-- `POST /api/v1/predict` - Upload audio for genre prediction
+- **Backend (Railway):** uses `backend/Dockerfile` and `backend/railway.toml`. Set `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL` (the exact Vercel origin, which the WebSocket `Origin` check depends on) and optionally the Spotify credentials.
+- **Frontend (Vercel):** set the root directory to `frontend`. Set `BACKEND_URL` and `NEXT_PUBLIC_WS_URL` (`wss://<api-host>/ws/listen`).
+- **Check:** `scripts/smoke.sh <frontend-url> <backend-url>` verifies liveness and the security posture.
 
-### History
-- `GET /api/v1/history` - Get user's prediction history
-- `DELETE /api/v1/history/{id}` - Delete prediction
+## Model
 
-### Insights
-- `GET /api/v1/insights/taste-profile` - Get user's taste profile
-
-## Testing
-
-### Backend
-```bash
-cd backend
-pytest
-```
-
-### Frontend
-```bash
-cd frontend
-npm test
-```
-
-## Deployment
-
-### Backend (Railway)
-- Dockerfile included
-- Uses PostgreSQL service
-- Single worker for ML model in memory
-
-### Frontend (Vercel)
-- Next.js 14 App Router compatible
-- API proxy for secure token handling
-
-## License
-
-MIT
+The classifier is the inference half of [krogdorlok/Myuzik](https://github.com/krogdorlok/Myuzik): frozen VGGish embeddings averaged over 20 s, then multinomial logistic regression trained on GTZAN. The accuracy above is measured on that project's held-out split using this server's own inference code. GTZAN splits aren't artist-filtered, so treat the number as optimistic. VGGish is © Google, Apache-2.0.

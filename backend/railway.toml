@@ -1,0 +1,8 @@
+# Railway: build the Dockerfile, gate traffic on /health. One replica: the model and live sessions are per-process.
+[build]
+builder = "DOCKERFILE"
+
+[deploy]
+healthcheckPath = "/health"
+numReplicas = 1
+restartPolicyType = "ON_FAILURE"
