@@ -63,7 +63,7 @@ Requirements: Node 22+, Python 3.11, PostgreSQL, and `vggish.tflite` (from the G
 cd backend
 cp .env.example .env            # set DATABASE_URL and JWT_SECRET (openssl rand -hex 32)
 uv venv -p 3.11 && uv pip install -r pyproject.toml --extra dev
-curl -fLo models/vggish.tflite --create-dirs https://github.com/krogdorlok/myuzik-web/releases/download/vggish-v1/vggish.tflite
+curl -fLo models/vggish.tflite --create-dirs https://github.com/krogdorlok/Myuzik_Web/releases/download/vggish-v1/vggish.tflite
 alembic upgrade head && uvicorn app.main:app --port 8000 --ws-max-size 65536
 
 # frontend

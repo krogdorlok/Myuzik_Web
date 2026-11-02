@@ -14,7 +14,7 @@ concurrency:
 
 env:
   HUSKY: 0
-  VGGISH_URL: https://github.com/krogdorlok/myuzik-web/releases/download/vggish-v1/vggish.tflite
+  VGGISH_URL: https://github.com/krogdorlok/Myuzik_Web/releases/download/vggish-v1/vggish.tflite
   VGGISH_SHA256: 2de04c6dc3678354c421d24be7513bac593a7f3d1703da8cdf7cd65c716b8d08
 
 jobs:

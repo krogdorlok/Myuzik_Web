@@ -5,7 +5,7 @@ WORKDIR /app
 COPY pyproject.toml .
 RUN uv pip install --system --no-cache -r pyproject.toml
 ADD --chmod=644 --checksum=sha256:2de04c6dc3678354c421d24be7513bac593a7f3d1703da8cdf7cd65c716b8d08 \
-    https://github.com/krogdorlok/myuzik-web/releases/download/vggish-v1/vggish.tflite models/vggish.tflite
+    https://github.com/krogdorlok/Myuzik_Web/releases/download/vggish-v1/vggish.tflite models/vggish.tflite
 COPY alembic.ini .
 COPY alembic alembic
 COPY app app
