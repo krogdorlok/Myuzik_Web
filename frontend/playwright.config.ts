@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const ci = !!process.env.CI;
+const prod = ci || !!process.env.PERF;
 
 export default defineConfig({
   testDir: "e2e",
@@ -17,8 +18,8 @@ export default defineConfig({
     { name: "mobile-safari", use: { ...devices["iPhone 14"] } },
   ],
   webServer: {
-    command: ci ? "npm run start" : "npm run dev",
+    command: prod ? "npm run start" : "npm run dev",
     url: "http://localhost:3000/sign-in",
-    reuseExistingServer: !ci,
+    reuseExistingServer: !prod,
   },
 });

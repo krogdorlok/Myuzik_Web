@@ -1,4 +1,5 @@
 // Server-only helpers for talking to FastAPI: base URL, session cookie options, timed fetch.
+import "server-only";
 import { logger } from "@/lib/logger";
 import type { User } from "@/types";
 

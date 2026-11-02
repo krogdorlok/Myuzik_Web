@@ -2,7 +2,15 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { signUp } from "./helpers";
 
-const scan = (page: import("@playwright/test").Page) =>
+async function scan(page: import("@playwright/test").Page) {
+  // Entrance animations fade from opacity 0; scanning mid-fade would report blended colours.
+  await page.waitForFunction(() =>
+    document.getAnimations().every((a) => a.playState !== "running"),
+  );
+  return axeScan(page);
+}
+
+const axeScan = (page: import("@playwright/test").Page) =>
   new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
 
 test("auth pages have no axe violations", async ({ page }) => {

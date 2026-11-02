@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Syne } from "next/font/google";
 import { headers } from "next/headers";
+import { WebVitals } from "@/components/layout/WebVitals";
 import "./globals.css";
 
 const syne = Syne({ subsets: ["latin"], variable: "--font-syne", weight: ["700", "800"] });
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         {children}
+        <WebVitals />
       </body>
     </html>
   );
