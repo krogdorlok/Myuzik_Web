@@ -50,9 +50,13 @@ class GenreModel:
 
 
 def decode_clip(data: bytes) -> np.ndarray:
-    """Decode WAV/FLAC/OGG/MP3 to the 16 kHz mono 20 s clip the classifier was trained on."""
-    audio, sr = sf.read(io.BytesIO(data), dtype="float32", always_2d=True)
-    audio = audio.mean(axis=1)
+    """Decode WAV/FLAC/OGG/MP3 to the 16 kHz mono 20 s clip the classifier was trained on.
+    Only the first 20 s of frames are decoded, so a small, highly compressed file can't balloon in memory."""
+    with sf.SoundFile(io.BytesIO(data)) as f:
+        if not (8_000 <= f.samplerate <= 192_000 and 1 <= f.channels <= 8):
+            raise ValueError("unsupported sample rate or channel count")
+        sr = f.samplerate
+        audio = f.read(frames=sr * CLIP_SECONDS, dtype="float32", always_2d=True).mean(axis=1)
     if sr != SAMPLE_RATE:
         audio = soxr.resample(audio, sr, SAMPLE_RATE)
     n = SAMPLE_RATE * CLIP_SECONDS

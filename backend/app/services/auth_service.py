@@ -17,7 +17,7 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, hashed: str | None) -> bool:
-    ok = bcrypt.checkpw(password.encode()[:72], (hashed or _DUMMY_HASH).encode())
+    ok = bcrypt.checkpw(password.encode(), (hashed or _DUMMY_HASH).encode())
     return ok and hashed is not None
 
 

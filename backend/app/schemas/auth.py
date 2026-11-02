@@ -7,17 +7,12 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 class UserLogin(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=1, max_length=128)
+    password: str = Field(min_length=1)
 
     @field_validator("email")
     @classmethod
     def normalize_email(cls, v: str) -> str:
         return v.lower()
-
-
-class UserRegister(UserLogin):
-    name: str = Field(min_length=1, max_length=100)
-    password: str = Field(min_length=8, max_length=128)
 
     @field_validator("password")
     @classmethod
@@ -25,6 +20,11 @@ class UserRegister(UserLogin):
         if len(v.encode()) > 72:
             raise ValueError("Password must be at most 72 bytes")
         return v
+
+
+class UserRegister(UserLogin):
+    name: str = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=8)
 
 
 class UserResponse(BaseModel):

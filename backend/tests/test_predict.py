@@ -51,3 +51,22 @@ async def test_predict_rejects_bad_uploads(client: AsyncClient, register, name, 
     headers = await register()
     r = await client.post("/api/v1/predict", headers=headers, files={"file": (name, data, mime)})
     assert r.status_code == status
+
+
+async def test_body_limit_runs_before_auth(client: AsyncClient):
+    too_big = {"content-length": str(MAX_FILE_SIZE * 2), "content-type": "multipart/form-data; boundary=x"}
+    assert (await client.post("/api/v1/predict", headers=too_big, content=b"")).status_code == 413
+
+
+def test_decode_rejects_absurd_sample_rates():
+    import io
+
+    import numpy as np
+    import soundfile as sf
+
+    from app.ml.myuzik import decode_clip
+
+    buf = io.BytesIO()
+    sf.write(buf, np.zeros(10, dtype=np.float32), 384_000, format="WAV")
+    with pytest.raises(ValueError):
+        decode_clip(buf.getvalue())

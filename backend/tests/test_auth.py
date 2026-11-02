@@ -31,6 +31,10 @@ async def test_login(client: AsyncClient):
     assert ok.status_code == 200 and ok.json()["access_token"]
     assert bad.status_code == unknown.status_code == 401
     assert bad.json() == unknown.json()
+    overlong = await client.post(
+        "/api/v1/auth/login", json={"email": "ada@example.com", "password": "password123" + "x" * 70}
+    )
+    assert overlong.status_code == 422
 
 
 async def test_me(client: AsyncClient, register):

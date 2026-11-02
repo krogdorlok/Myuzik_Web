@@ -45,6 +45,6 @@ async def predict(file: UploadFile, user: CurrentUser, model: Model, db: DB) -> 
 
     try:
         scores = await run_in_threadpool(classify)
-    except RuntimeError as e:  # soundfile raises LibsndfileError (a RuntimeError) on undecodable audio
+    except (RuntimeError, ValueError) as e:  # LibsndfileError is a RuntimeError
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Could not decode audio") from e
     return await save_prediction(db, user.id, (file.filename or "upload")[:255], scores)

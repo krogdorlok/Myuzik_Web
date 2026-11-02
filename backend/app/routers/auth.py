@@ -1,6 +1,7 @@
 """Register, login and current-user endpoints."""
 
 from fastapi import APIRouter, HTTPException, status
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -18,7 +19,8 @@ def _session(user: User) -> TokenResponse:
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(data: UserRegister, db: DB) -> TokenResponse:
-    user = User(name=data.name, email=data.email, hashed_password=hash_password(data.password))
+    hashed = await run_in_threadpool(hash_password, data.password)
+    user = User(name=data.name, email=data.email, hashed_password=hashed)
     db.add(user)
     try:
         await db.commit()
@@ -30,7 +32,7 @@ async def register(data: UserRegister, db: DB) -> TokenResponse:
 @router.post("/login")
 async def login(data: UserLogin, db: DB) -> TokenResponse:
     user = await db.scalar(select(User).where(User.email == data.email))
-    if not verify_password(data.password, user.hashed_password if user else None):
+    if not await run_in_threadpool(verify_password, data.password, user.hashed_password if user else None):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
     return _session(user)
 
