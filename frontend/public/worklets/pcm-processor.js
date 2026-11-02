@@ -1,8 +1,10 @@
-// AudioWorklet (audio thread): downmix → 64-tap windowed-sinc low-pass at 7.2 kHz (so nothing above the
-// 8 kHz Nyquist aliases) → fractional resample to 16 kHz → Int16, posted as 15,360-sample (0.96 s) frames.
+// AudioWorklet (audio thread): downmix → windowed-sinc low-pass → fractional resample to 16 kHz → Int16,
+// posted as 15,360-sample (0.96 s) frames. The filter cuts at 7.2 kHz with a ~2.5 kHz Hamming transition, so
+// anything that would fold into VGGish's 125 Hz–7.5 kHz mel range (input above ~8.5 kHz) is in the stopband;
+// taps scale with the input rate to keep that transition width constant in Hz.
 const TARGET_RATE = 16000;
 const FRAME = 15360;
-const TAPS = 64;
+const TAPS = 2 * Math.ceil((32 * sampleRate) / 48000);
 
 function lowPass(cutoff) {
   const kernel = new Float32Array(TAPS);

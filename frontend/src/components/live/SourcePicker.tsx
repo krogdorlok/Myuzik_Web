@@ -1,6 +1,6 @@
 "use client";
 // Mic / file toggle (a radio group styled as segmented control) and, in file mode, a validated track + player.
-import { useState, type RefObject } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import { ACCEPT, checkAudioFile } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 
@@ -17,13 +17,20 @@ interface SourcePickerProps {
 export function SourcePicker({ source, onChange, disabled, audioRef, take }: SourcePickerProps) {
   const [error, setError] = useState<string | null>(null);
   const file = source.mode === "file" ? source.file : undefined;
+  const url = file?.url;
+
+  useEffect(
+    () => () => {
+      if (url) URL.revokeObjectURL(url);
+    },
+    [url],
+  );
 
   async function pick(f: File | undefined) {
     if (!f) return;
     const check = await checkAudioFile(f);
     setError(check.ok ? null : check.error);
     if (!check.ok) return;
-    if (file) URL.revokeObjectURL(file.url);
     onChange({ mode: "file", file: { url: URL.createObjectURL(f), name: f.name } });
   }
 

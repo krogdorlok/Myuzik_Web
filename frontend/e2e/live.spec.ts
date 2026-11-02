@@ -28,7 +28,10 @@ test("the UI recovers from a dropped socket and resumes the session", async ({ p
   await page.routeWebSocket(/\/ws\/listen/, (ws) => {
     connections++;
     sessions.push(new URL(ws.url()).searchParams.get("session"));
-    ws.send(JSON.stringify({ type: "ready", sessionId: "s-1" }));
+    // Delay the resumed handshake so the transient "Reconnecting…" state is reliably observable.
+    const ready = () => ws.send(JSON.stringify({ type: "ready", sessionId: "s-1" }));
+    if (connections === 1) ready();
+    else setTimeout(ready, 1500);
     let seq = 0;
     ws.onMessage(() => {
       seq++;

@@ -22,29 +22,29 @@ export async function startCapture(
         })
       : null;
   const context = new AudioContext();
-  await context.audioWorklet.addModule("/worklets/pcm-processor.js");
-  const worklet = new AudioWorkletNode(context, "pcm-processor");
-  worklet.port.onmessage = (e: MessageEvent<Int16Array>) => onFrame(e.data);
-  // The worklet writes no output; connecting it to the destination just keeps it scheduled in every browser.
-  worklet.connect(context.destination);
-
-  if (stream) {
-    context.createMediaStreamSource(stream).connect(worklet);
-  } else if (source.kind === "file") {
-    const node = context.createMediaElementSource(source.element);
-    node.connect(worklet);
-    node.connect(context.destination);
-    await source.element.play();
-  }
-  await context.resume();
-
-  return {
-    context,
-    stop: async () => {
-      stream?.getTracks().forEach((t) => t.stop());
-      if (source.kind === "file") source.element.pause();
-      worklet.port.onmessage = null;
-      await context.close();
-    },
+  const stop = async () => {
+    stream?.getTracks().forEach((t) => t.stop());
+    if (source.kind === "file") source.element.pause();
+    if (context.state !== "closed") await context.close();
   };
+  try {
+    await context.audioWorklet.addModule("/worklets/pcm-processor.js");
+    const worklet = new AudioWorkletNode(context, "pcm-processor");
+    worklet.port.onmessage = (e: MessageEvent<Int16Array>) => onFrame(e.data);
+    // The worklet writes no output; connecting it to the destination just keeps it scheduled in every browser.
+    worklet.connect(context.destination);
+    if (stream) {
+      context.createMediaStreamSource(stream).connect(worklet);
+    } else if (source.kind === "file") {
+      const node = context.createMediaElementSource(source.element);
+      node.connect(worklet);
+      node.connect(context.destination);
+      await source.element.play();
+    }
+    await context.resume();
+  } catch (err) {
+    await stop();
+    throw err;
+  }
+  return { context, stop };
 }

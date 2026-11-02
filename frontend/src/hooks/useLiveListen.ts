@@ -23,10 +23,14 @@ export function useLiveListen() {
   const [stats, setStats] = useState<LiveStats | null>(null);
   const socket = useRef<LiveSocket | null>(null);
   const capture = useRef<Capture | null>(null);
+  // Bumped by every start/stop so late results from a superseded run are disposed, never adopted.
+  const run = useRef(0);
 
   const stop = useCallback(async () => {
+    run.current++;
     socket.current?.stop();
     socket.current = null;
+    setStatus("idle");
     const c = capture.current;
     capture.current = null;
     await c?.stop();
@@ -35,6 +39,7 @@ export function useLiveListen() {
   const start = useCallback(
     async (source: LiveSource) => {
       await stop();
+      const id = run.current;
       setError(null);
       setCurrent(null);
       setTimeline([]);
@@ -42,6 +47,7 @@ export function useLiveListen() {
         url: WS_URL,
         getTicket: async () => (await api.liveTicket()).ticket,
         onStatus: (s, message) => {
+          if (id !== run.current) return;
           setStatus(s);
           if (message) setError(message);
           if (s === "error") {
@@ -50,6 +56,7 @@ export function useLiveListen() {
           }
         },
         onPrediction: (p) => {
+          if (id !== run.current) return;
           const at = (performance.now() - live.stats.startedAt) / 1000;
           setCurrent(p);
           setStats({ ...live.stats });
@@ -67,8 +74,11 @@ export function useLiveListen() {
       socket.current = live;
       live.start();
       try {
-        capture.current = await startCapture(source, (pcm) => live.send(pcm));
+        const c = await startCapture(source, (pcm) => live.send(pcm));
+        if (id !== run.current) return void c.stop();
+        capture.current = c;
       } catch (err) {
+        if (id !== run.current) return;
         await stop();
         setStatus("error");
         setError(

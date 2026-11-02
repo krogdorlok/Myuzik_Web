@@ -108,6 +108,7 @@ export class LiveSocket {
   }
 
   private receive(data: unknown) {
+    if (this.stopped) return;
     let parsed: ReturnType<typeof ServerMessage.safeParse>;
     try {
       parsed = ServerMessage.safeParse(JSON.parse(String(data)));
@@ -131,6 +132,7 @@ export class LiveSocket {
   }
 
   private retry() {
+    if (this.stopped) return;
     if (this.attempt >= MAX_ATTEMPTS)
       return this.opts.onStatus("error", "Lost connection to the listening service.");
     if (!this.droppedAt) {

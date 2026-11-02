@@ -49,7 +49,10 @@ describe("pcm-processor worklet", () => {
     expect(peak(run(1_000, 1, 2)[0])).toBeCloseTo(0.5, 1);
   });
 
-  it("filters content above 8 kHz instead of aliasing it", () => {
-    expect(peak(run(12_000, 1)[0])).toBeLessThan(0.02);
-  });
+  it.each([9_000, 12_000, 20_000])(
+    "keeps a %d Hz tone from aliasing into the model's band",
+    (hz) => {
+      expect(peak(run(hz, 1)[0])).toBeLessThan(0.02);
+    },
+  );
 });
