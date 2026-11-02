@@ -56,6 +56,7 @@ export default function HomePage() {
 
   const handleSubmit = async () => {
     if (!file) return;
+    setFileError(null);
     try {
       await upload(file);
     } catch (err) {
@@ -65,6 +66,7 @@ export default function HomePage() {
 
   const handleReset = () => {
     reset();
+    setFileError(null);
     setFile(null);
   };
 
