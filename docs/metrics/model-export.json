@@ -1,0 +1,21 @@
+{
+  "embedding_max_abs_diff_tf_vs_litert": 6.556510925292969e-06,
+  "classifier_max_abs_diff_numpy_vs_sklearn": 0.0,
+  "median_latency_ms": {
+    "clip_20s": {
+      "tensorflow": 119.0,
+      "litert": 106.0
+    },
+    "live_window_2_88s": {
+      "tensorflow": 33.0,
+      "litert": 14.8
+    }
+  },
+  "artifact_bytes": {
+    "vggish.tflite": 288652928,
+    "classifier.npz": 6276
+  },
+  "machine": "local dev (Apple Silicon, 8 cores)",
+  "command": "see scripts/export_model.py docstring",
+  "date": "2026-11-01"
+}

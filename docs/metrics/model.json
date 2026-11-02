@@ -1,0 +1,158 @@
+{
+  "dataset": "GTZAN genres_original, held-out validation split (splits.json, seed 42)",
+  "n_clips": 197,
+  "accuracy": 0.8477,
+  "macro_f1": 0.8438,
+  "per_class_f1": {
+    "blues": 0.9302,
+    "classical": 0.9524,
+    "country": 0.85,
+    "disco": 0.7391,
+    "hiphop": 0.9048,
+    "jazz": 0.9231,
+    "metal": 0.8889,
+    "pop": 0.85,
+    "reggae": 0.7333,
+    "rock": 0.6667
+  },
+  "confusion_matrix": {
+    "labels": [
+      "blues",
+      "classical",
+      "country",
+      "disco",
+      "hiphop",
+      "jazz",
+      "metal",
+      "pop",
+      "reggae",
+      "rock"
+    ],
+    "rows_true_cols_pred": [
+      [
+        20,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        20,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        17,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        17,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        19,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        2,
+        0,
+        0,
+        0,
+        18,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        16,
+        1,
+        0,
+        2
+      ],
+      [
+        0,
+        0,
+        0,
+        2,
+        1,
+        0,
+        0,
+        17,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        3,
+        2,
+        0,
+        0,
+        0,
+        11,
+        0
+      ],
+      [
+        1,
+        0,
+        3,
+        3,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12
+      ]
+    ]
+  },
+  "mean_inference_ms_per_clip": 130.4,
+  "command": "cd backend && python scripts/eval.py <ml-project-root>",
+  "commit": "153224a",
+  "date": "2026-11-01"
+}
