@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import type { HistoryResponse, HistoryItem } from "@/types";
 import { api } from "@/lib/api";
 

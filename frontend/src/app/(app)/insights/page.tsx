@@ -2,22 +2,23 @@
 
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/Card";
+import { logger } from "@/lib/logger";
 import type { TasteProfile } from "@/types";
 
 export default function InsightsPage() {
   const [profile, setProfile] = useState<TasteProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const response = await fetch("/api/proxy/insights/taste-profile");
-        if (response.ok) {
-          const data = await response.json();
-          setProfile(data);
-        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        setProfile(await response.json());
       } catch (err) {
-        console.error(err);
+        logger.error({ err }, "taste profile fetch failed");
+        setError("Couldn't load your insights. Try again later.");
       } finally {
         setIsLoading(false);
       }
@@ -27,6 +28,16 @@ export default function InsightsPage() {
 
   if (isLoading) {
     return <div className="text-center text-muted">Loading insights...</div>;
+  }
+
+  if (error) {
+    return (
+      <Card className="py-12 text-center">
+        <p role="alert" className="text-error">
+          {error}
+        </p>
+      </Card>
+    );
   }
 
   if (!profile || profile.total_analyses === 0) {

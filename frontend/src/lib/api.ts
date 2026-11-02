@@ -4,9 +4,15 @@ import type {
   HistoryResponse,
   TasteProfile,
   ApiError,
+  User,
 } from "@/types";
 
 const API_BASE = "/api/proxy";
+
+function toQuery(params: Record<string, string | number | undefined>): string {
+  const entries = Object.entries(params).filter(([, v]) => v !== undefined);
+  return new URLSearchParams(entries.map(([k, v]) => [k, String(v)])).toString();
+}
 
 async function apiRequest<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -66,9 +72,7 @@ export const api = {
 
   history: {
     list: (params?: { genre?: string; limit?: number; offset?: number }) =>
-      apiRequest<HistoryResponse>(
-        `/history${params ? "?" + new URLSearchParams(params as any).toString() : ""}`,
-      ),
+      apiRequest<HistoryResponse>(`/history${params ? "?" + toQuery(params) : ""}`),
 
     delete: (id: string) => apiRequest<void>(`/history/${id}`, { method: "DELETE" }),
   },

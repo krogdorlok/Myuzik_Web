@@ -1,19 +1,31 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { Logo } from "@/components/layout/Logo";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useUpload } from "@/hooks/useUpload";
 import { getGreeting, getGenreImage } from "@/lib/auth";
 import { formatBytes } from "@/lib/utils";
-import type { PredictionResult } from "@/types";
+import { logger } from "@/lib/logger";
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 export default function HomePage() {
   const { upload, result, isLoading, error, reset } = useUpload();
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+
+  const pickFile = (picked: File) => {
+    if (picked.size > MAX_FILE_SIZE) {
+      setFileError("File too large. Max 50MB.");
+      return;
+    }
+    setFileError(null);
+    setFile(picked);
+  };
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -25,7 +37,7 @@ export default function HomePage() {
     }
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
@@ -33,24 +45,13 @@ export default function HomePage() {
     const dt = e.dataTransfer;
     const files = dt.files;
     if (files?.[0]) {
-      const droppedFile = files[0];
-      if (droppedFile.size > 50 * 1024 * 1024) {
-        alert("File too large. Max 50MB.");
-        return;
-      }
-      setFile(droppedFile);
+      pickFile(files[0]);
     }
-  }, []);
+  };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      if (selectedFile.size > 50 * 1024 * 1024) {
-        alert("File too large. Max 50MB.");
-        return;
-      }
-      setFile(selectedFile);
-    }
+    if (selectedFile) pickFile(selectedFile);
   };
 
   const handleSubmit = async () => {
@@ -58,7 +59,7 @@ export default function HomePage() {
     try {
       await upload(file);
     } catch (err) {
-      console.error(err);
+      logger.error({ err }, "upload failed");
     }
   };
 
@@ -77,7 +78,7 @@ export default function HomePage() {
         <h1 className="mb-2 font-display text-3xl font-extrabold text-text">
           Good {getGreeting()}
         </h1>
-        <p className="text-muted">Hear what you're made of.</p>
+        <p className="text-muted">Hear what you&apos;re made of.</p>
       </div>
 
       <Card className="mx-auto mb-8 max-w-2xl">
@@ -122,7 +123,11 @@ export default function HomePage() {
           </div>
         )}
 
-        {error && <p className="mt-4 text-center text-sm text-error">{error}</p>}
+        {(fileError ?? error) && (
+          <p role="alert" className="mt-4 text-center text-sm text-error">
+            {fileError ?? error}
+          </p>
+        )}
       </Card>
 
       <AnimatePresence>
@@ -138,16 +143,20 @@ export default function HomePage() {
               <div className="mb-6">
                 <div className="relative -mx-6 -mt-6 mb-4 h-40 overflow-hidden rounded-t-lg">
                   {result.spotify_match?.album_art_url ? (
-                    <img
+                    <Image
                       src={result.spotify_match.album_art_url}
                       alt={result.spotify_match.album}
-                      className="h-full w-full object-cover"
+                      fill
+                      sizes="(max-width: 672px) 100vw, 672px"
+                      className="object-cover"
                     />
                   ) : (
-                    <img
+                    <Image
                       src={getGenreImage(result.genre)}
                       alt={result.genre}
-                      className="h-full w-full object-cover"
+                      fill
+                      sizes="(max-width: 672px) 100vw, 672px"
+                      className="object-cover"
                     />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-surface to-transparent" />

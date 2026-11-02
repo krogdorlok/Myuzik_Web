@@ -1,16 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { Logo } from "@/components/layout/Logo";
 import { Card } from "@/components/ui/Card";
 import { useHistory } from "@/hooks/useHistory";
-import { getGenreImage, getInitials } from "@/lib/auth";
+import { getInitials } from "@/lib/auth";
 import { formatDate } from "@/lib/utils";
-import type { HistoryItem } from "@/types";
+import { logger } from "@/lib/logger";
 
 export default function HistoryPage() {
-  const { items, total, isLoading, fetch, deleteItem } = useHistory();
+  const { items, total, isLoading, error, fetch, deleteItem } = useHistory();
   const [filter, setFilter] = useState<string>("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -24,7 +24,7 @@ export default function HistoryPage() {
         await deleteItem(id);
         setDeletingId(null);
       } catch (err) {
-        console.error(err);
+        logger.error({ err }, "delete failed");
       }
     } else {
       setDeletingId(id);
@@ -41,6 +41,12 @@ export default function HistoryPage() {
         <h1 className="mb-2 font-display text-3xl font-extrabold text-text">History</h1>
         <p className="text-muted">{total} analyses</p>
       </div>
+
+      {error && (
+        <p role="alert" className="mb-6 text-sm text-error">
+          {error}
+        </p>
+      )}
 
       <div className="mb-6">
         <select
@@ -69,12 +75,14 @@ export default function HistoryPage() {
         <div className="space-y-4">
           {filteredItems.map((item) => (
             <Card key={item.id} className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded bg-surface">
+              <div className="relative flex h-12 w-12 items-center justify-center rounded bg-surface">
                 {item.spotify_match?.album_art_url ? (
-                  <img
+                  <Image
                     src={item.spotify_match.album_art_url}
                     alt=""
-                    className="h-full w-full rounded object-cover"
+                    fill
+                    sizes="48px"
+                    className="rounded object-cover"
                   />
                 ) : (
                   <span className="font-display text-xs font-bold text-muted">
