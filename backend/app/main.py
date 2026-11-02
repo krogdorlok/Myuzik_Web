@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.database import engine
 from app.ml.myuzik import GenreModel
-from app.routers import auth, history, insights, predict
+from app.routers import auth, history, insights, live, predict
 from app.routers.predict import MAX_FILE_SIZE
 
 logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -60,6 +60,7 @@ async def log_requests(request: Request, call_next: Callable[[Request], Awaitabl
 
 for router in (auth.router, predict.router, history.router, insights.router):
     app.include_router(router, prefix="/api/v1")
+app.include_router(live.router)
 
 
 @app.get("/health")
