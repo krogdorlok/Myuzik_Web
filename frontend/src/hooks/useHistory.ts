@@ -19,18 +19,21 @@ export function useHistory(): UseHistoryReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetch = useCallback(async (params?: { genre?: string; limit?: number; offset?: number }) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await api.history.list(params);
-      setData(response);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch history");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const fetch = useCallback(
+    async (params?: { genre?: string; limit?: number; offset?: number }) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await api.history.list(params);
+        setData(response);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch history");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [],
+  );
 
   const deleteItem = useCallback(async (id: string) => {
     setIsLoading(true);

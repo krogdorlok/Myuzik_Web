@@ -31,7 +31,7 @@ export default function InsightsPage() {
 
   if (!profile || profile.total_analyses === 0) {
     return (
-      <Card className="text-center py-12">
+      <Card className="py-12 text-center">
         <p className="text-muted">Not enough data yet. Upload more music!</p>
       </Card>
     );
@@ -39,29 +39,27 @@ export default function InsightsPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-display font-extrabold text-text mb-8">
-        Your Taste Profile
-      </h1>
+      <h1 className="mb-8 font-display text-3xl font-extrabold text-text">Your Taste Profile</h1>
 
-      <div className="grid md:grid-cols-3 gap-6 mb-8">
+      <div className="mb-8 grid gap-6 md:grid-cols-3">
         <Card className="text-center">
-          <p className="text-4xl font-display font-extrabold text-accent">
+          <p className="font-display text-4xl font-extrabold text-accent">
             {profile.total_analyses}
           </p>
           <p className="text-muted">Total analyses</p>
         </Card>
 
         <Card className="text-center">
-          <p className="text-4xl font-display font-extrabold text-accent capitalize">
+          <p className="font-display text-4xl font-extrabold capitalize text-accent">
             {profile.top_genre}
           </p>
           <p className="text-muted">Top genre</p>
         </Card>
 
         <Card className="text-center">
-          <p className="text-4xl font-display font-extrabold text-accent">
+          <p className="font-display text-4xl font-extrabold text-accent">
             {Math.round(
-              (profile.genre_breakdown.find((g) => g.genre === profile.top_genre)?.percentage || 0)
+              profile.genre_breakdown.find((g) => g.genre === profile.top_genre)?.percentage || 0,
             )}
             %
           </p>
@@ -70,24 +68,19 @@ export default function InsightsPage() {
       </div>
 
       <Card>
-        <h2 className="text-xl font-display font-extrabold text-text mb-6">
-          Genre breakdown
-        </h2>
+        <h2 className="mb-6 font-display text-xl font-extrabold text-text">Genre breakdown</h2>
 
         <div className="space-y-4">
           {profile.genre_breakdown.map((item) => (
             <div key={item.genre}>
-              <div className="flex justify-between mb-1">
-                <span className="text-text capitalize">{item.genre}</span>
+              <div className="mb-1 flex justify-between">
+                <span className="capitalize text-text">{item.genre}</span>
                 <span className="text-muted">
                   {item.count} ({item.percentage}%)
                 </span>
               </div>
-              <div className="h-2 bg-border rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-accent"
-                  style={{ width: `${item.percentage}%` }}
-                />
+              <div className="h-2 overflow-hidden rounded-full bg-border">
+                <div className="h-full bg-accent" style={{ width: `${item.percentage}%` }} />
               </div>
             </div>
           ))}

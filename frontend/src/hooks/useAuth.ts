@@ -26,35 +26,41 @@ export function useAuth(): UseAuthReturn {
     setError(null);
   }, []);
 
-  const register = useCallback(async (name: string, email: string, password: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await api.auth.register(name, email, password);
-      setUser(response.user);
-      router.push("/");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [router]);
+  const register = useCallback(
+    async (name: string, email: string, password: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await api.auth.register(name, email, password);
+        setUser(response.user);
+        router.push("/");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Registration failed");
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [router],
+  );
 
-  const login = useCallback(async (email: string, password: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await api.auth.login(email, password);
-      setUser(response.user);
-      router.push("/");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [router]);
+  const login = useCallback(
+    async (email: string, password: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await api.auth.login(email, password);
+        setUser(response.user);
+        router.push("/");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Login failed");
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [router],
+  );
 
   const logout = useCallback(() => {
     setUser(null);

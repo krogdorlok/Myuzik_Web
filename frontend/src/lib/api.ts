@@ -8,10 +8,7 @@ import type {
 
 const API_BASE = "/api/proxy";
 
-async function apiRequest<T>(
-  path: string,
-  options?: RequestInit,
-): Promise<T> {
+async function apiRequest<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
@@ -42,8 +39,7 @@ export const api = {
         body: JSON.stringify({ email, password }),
       }),
 
-    me: () =>
-      apiRequest<User>("/auth/me"),
+    me: () => apiRequest<User>("/auth/me"),
   },
 
   predict: {
@@ -74,12 +70,10 @@ export const api = {
         `/history${params ? "?" + new URLSearchParams(params as any).toString() : ""}`,
       ),
 
-    delete: (id: string) =>
-      apiRequest<void>(`/history/${id}`, { method: "DELETE" }),
+    delete: (id: string) => apiRequest<void>(`/history/${id}`, { method: "DELETE" }),
   },
 
   insights: {
-    tasteProfile: () =>
-      apiRequest<TasteProfile>("/insights/taste-profile"),
+    tasteProfile: () => apiRequest<TasteProfile>("/insights/taste-profile"),
   },
 };

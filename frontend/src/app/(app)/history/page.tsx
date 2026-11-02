@@ -31,20 +31,14 @@ export default function HistoryPage() {
     }
   };
 
-  const filteredItems =
-    filter === "all" ? items : items.filter((item) => item.genre === filter);
+  const filteredItems = filter === "all" ? items : items.filter((item) => item.genre === filter);
 
-  const genres = [
-    "all",
-    ...Array.from(new Set(items.map((item) => item.genre.toLowerCase()))),
-  ];
+  const genres = ["all", ...Array.from(new Set(items.map((item) => item.genre.toLowerCase())))];
 
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-display font-extrabold text-text mb-2">
-          History
-        </h1>
+        <h1 className="mb-2 font-display text-3xl font-extrabold text-text">History</h1>
         <p className="text-muted">{total} analyses</p>
       </div>
 
@@ -52,7 +46,7 @@ export default function HistoryPage() {
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="bg-surface border border-border rounded-md px-4 py-2 text-text"
+          className="rounded-md border border-border bg-surface px-4 py-2 text-text"
         >
           {genres.map((genre) => (
             <option key={genre} value={genre}>
@@ -65,7 +59,7 @@ export default function HistoryPage() {
       {isLoading ? (
         <div className="text-center text-muted">Loading...</div>
       ) : filteredItems.length === 0 ? (
-        <Card className="text-center py-12">
+        <Card className="py-12 text-center">
           <p className="text-muted">No history yet. Upload some music!</p>
           <Link href="/">
             <button className="mt-4 text-accent hover:underline">Go to upload</button>
@@ -75,24 +69,22 @@ export default function HistoryPage() {
         <div className="space-y-4">
           {filteredItems.map((item) => (
             <Card key={item.id} className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded bg-surface flex items-center justify-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded bg-surface">
                 {item.spotify_match?.album_art_url ? (
                   <img
                     src={item.spotify_match.album_art_url}
                     alt=""
-                    className="w-full h-full object-cover rounded"
+                    className="h-full w-full rounded object-cover"
                   />
                 ) : (
-                  <span className="text-xs font-display font-bold text-muted">
+                  <span className="font-display text-xs font-bold text-muted">
                     {getInitials(item.genre)}
                   </span>
                 )}
               </div>
 
-              <div className="flex-1 min-w-0">
-                <p className="text-text font-display font-semibold truncate">
-                  {item.filename}
-                </p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-display font-semibold text-text">{item.filename}</p>
                 <p className="text-sm text-muted">
                   {item.genre} · {Math.round(item.confidence * 100)}%
                 </p>
@@ -101,7 +93,7 @@ export default function HistoryPage() {
 
               <button
                 onClick={() => handleDelete(item.id)}
-                className="p-2 text-muted hover:text-error transition-colors"
+                className="p-2 text-muted transition-colors hover:text-error"
               >
                 {deletingId === item.id ? "Confirm?" : "×"}
               </button>

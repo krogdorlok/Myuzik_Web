@@ -1,6 +1,7 @@
 # Genre Images
 
 Place genre images here with the following names:
+
 - blues.jpg
 - classical.jpg
 - country.jpg

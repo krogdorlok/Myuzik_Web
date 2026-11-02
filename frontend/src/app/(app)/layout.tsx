@@ -6,11 +6,7 @@ import { useRouter } from "next/navigation";
 import { Logo } from "@/components/layout/Logo";
 import { getInitials, getGreeting } from "@/lib/auth";
 
-export default function AppLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<{ name: string } | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -39,7 +35,7 @@ export default function AppLayout({
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <Logo size="lg" className="animate-pulse" />
       </div>
     );
@@ -48,7 +44,7 @@ export default function AppLayout({
   return (
     <div className="min-h-screen bg-background">
       <nav className="border-b border-border px-6 py-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
           <Link href="/">
             <Logo />
           </Link>
@@ -56,23 +52,23 @@ export default function AppLayout({
           <div className="relative">
             <button
               onClick={() => setShowDropdown(!showDropdown)}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-surface border border-border text-text font-display font-bold"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface font-display font-bold text-text"
             >
               {getInitials(user.name)}
             </button>
 
             {showDropdown && (
-              <div className="absolute right-0 mt-2 w-48 bg-surface border border-border rounded-lg shadow-lg overflow-hidden">
+              <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
                 <Link
                   href="/insights"
-                  className="block px-4 py-3 text-text hover:bg-border transition-colors"
+                  className="block px-4 py-3 text-text transition-colors hover:bg-border"
                   onClick={() => setShowDropdown(false)}
                 >
                   Insights
                 </Link>
                 <Link
                   href="/history"
-                  className="block px-4 py-3 text-text hover:bg-border transition-colors"
+                  className="block px-4 py-3 text-text transition-colors hover:bg-border"
                   onClick={() => setShowDropdown(false)}
                 >
                   History
@@ -80,7 +76,7 @@ export default function AppLayout({
                 <hr className="border-border" />
                 <button
                   onClick={handleLogout}
-                  className="w-full text-left px-4 py-3 text-error hover:bg-border transition-colors"
+                  className="w-full px-4 py-3 text-left text-error transition-colors hover:bg-border"
                 >
                   Sign out
                 </button>
@@ -90,7 +86,7 @@ export default function AppLayout({
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">{children}</main>
+      <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
     </div>
   );
 }

@@ -20,16 +20,16 @@ export function Button({
         "inline-flex items-center justify-center font-display font-extrabold",
         "transition-all duration-200",
         "focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background",
-        "disabled:opacity-50 disabled:cursor-not-allowed",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         {
           "bg-accent text-background hover:bg-accent/90": variant === "primary",
-          "bg-surface text-text border border-border hover:bg-border": variant === "secondary",
+          "border border-border bg-surface text-text hover:bg-border": variant === "secondary",
           "bg-transparent text-text hover:bg-surface": variant === "ghost",
         },
         {
-          "px-3 py-1.5 text-sm rounded-sm": size === "sm",
-          "px-4 py-2 text-base rounded-md": size === "md",
-          "px-6 py-3 text-lg rounded-lg": size === "lg",
+          "rounded-sm px-3 py-1.5 text-sm": size === "sm",
+          "rounded-md px-4 py-2 text-base": size === "md",
+          "rounded-lg px-6 py-3 text-lg": size === "lg",
         },
         className,
       )}

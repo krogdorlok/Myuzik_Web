@@ -74,21 +74,21 @@ export default function HomePage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-display font-extrabold text-text mb-2">
+        <h1 className="mb-2 font-display text-3xl font-extrabold text-text">
           Good {getGreeting()}
         </h1>
         <p className="text-muted">Hear what you're made of.</p>
       </div>
 
-      <Card className="max-w-2xl mx-auto mb-8">
+      <Card className="mx-auto mb-8 max-w-2xl">
         <div
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
-          className={`relative border-2 border-dashed rounded-lg p-12 text-center transition-all ${
+          className={`relative rounded-lg border-2 border-dashed p-12 text-center transition-all ${
             dragActive
-              ? "border-accent bg-accent/5 scale-[1.02]"
+              ? "scale-[1.02] border-accent bg-accent/5"
               : "border-border hover:border-muted"
           }`}
         >
@@ -96,20 +96,20 @@ export default function HomePage() {
             type="file"
             accept="audio/*"
             onChange={handleFileInput}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
           />
 
           {!file ? (
             <div>
-              <p className="text-text font-display font-semibold mb-2">
+              <p className="mb-2 font-display font-semibold text-text">
                 Drop an audio file or click to browse
               </p>
-              <p className="text-muted text-sm">MP3, WAV, FLAC, OGG up to 50MB</p>
+              <p className="text-sm text-muted">MP3, WAV, FLAC, OGG up to 50MB</p>
             </div>
           ) : (
             <div>
-              <p className="text-text font-display font-semibold mb-1">{file.name}</p>
-              <p className="text-muted text-sm">{formatBytes(file.size)}</p>
+              <p className="mb-1 font-display font-semibold text-text">{file.name}</p>
+              <p className="text-sm text-muted">{formatBytes(file.size)}</p>
             </div>
           )}
         </div>
@@ -122,9 +122,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {error && (
-          <p className="mt-4 text-center text-error text-sm">{error}</p>
-        )}
+        {error && <p className="mt-4 text-center text-sm text-error">{error}</p>}
       </Card>
 
       <AnimatePresence>
@@ -134,44 +132,44 @@ export default function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
-            className="max-w-2xl mx-auto"
+            className="mx-auto max-w-2xl"
           >
             <Card>
               <div className="mb-6">
-                <div className="relative h-40 -mx-6 -mt-6 mb-4 overflow-hidden rounded-t-lg">
+                <div className="relative -mx-6 -mt-6 mb-4 h-40 overflow-hidden rounded-t-lg">
                   {result.spotify_match?.album_art_url ? (
                     <img
                       src={result.spotify_match.album_art_url}
                       alt={result.spotify_match.album}
-                      className="w-full h-full object-cover"
+                      className="h-full w-full object-cover"
                     />
                   ) : (
                     <img
                       src={getGenreImage(result.genre)}
                       alt={result.genre}
-                      className="w-full h-full object-cover"
+                      className="h-full w-full object-cover"
                     />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-surface to-transparent" />
                 </div>
 
-                <h2 className="text-3xl font-display font-extrabold text-text">
+                <h2 className="font-display text-3xl font-extrabold text-text">
                   {result.genre.charAt(0).toUpperCase() + result.genre.slice(1)}
                 </h2>
-                <p className="text-accent font-display font-bold text-xl mb-2">
+                <p className="mb-2 font-display text-xl font-bold text-accent">
                   {Math.round(result.confidence * 100)}% confidence
                 </p>
 
                 {result.spotify_match ? (
-                  <p className="text-muted text-sm">
+                  <p className="text-sm text-muted">
                     {result.spotify_match.artist} · {result.spotify_match.album}
                   </p>
                 ) : (
-                  <p className="text-muted text-sm">No match found via Spotify</p>
+                  <p className="text-sm text-muted">No match found via Spotify</p>
                 )}
               </div>
 
-              <div className="space-y-3 mb-6">
+              <div className="mb-6 space-y-3">
                 {genreEntries.map(([genre, score], index) => {
                   const percentage = Math.round(score * 100);
                   return (
@@ -180,15 +178,11 @@ export default function HomePage() {
                       initial={{ width: 0 }}
                       animate={{ width: `${percentage}%` }}
                       transition={{ delay: index * 0.05 }}
-                      className="h-2 rounded-full overflow-hidden"
+                      className="h-2 overflow-hidden rounded-full"
                     >
                       <div
                         className={`h-full ${
-                          index === 0
-                            ? "bg-accent"
-                            : index === 1
-                            ? "bg-accent-dim"
-                            : "bg-[#333]"
+                          index === 0 ? "bg-accent" : index === 1 ? "bg-accent-dim" : "bg-[#333]"
                         }`}
                       />
                     </motion.div>

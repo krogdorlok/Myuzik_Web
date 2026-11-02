@@ -26,9 +26,10 @@ async function proxyRequest(request: NextRequest, path: string[], method: string
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const body = method === "POST" && request.headers.get("content-type")?.includes("multipart")
-    ? request.body
-    : JSON.stringify(await request.json().catch(() => ({})));
+  const body =
+    method === "POST" && request.headers.get("content-type")?.includes("multipart")
+      ? request.body
+      : JSON.stringify(await request.json().catch(() => ({})));
 
   const response = await fetch(url.toString(), {
     method,

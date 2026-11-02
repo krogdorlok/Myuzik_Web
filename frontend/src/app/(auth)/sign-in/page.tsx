@@ -52,14 +52,14 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
-        <div className="flex justify-between items-center mb-8">
+        <div className="mb-8 flex items-center justify-between">
           <Logo size="lg" />
         </div>
 
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-display font-extrabold text-text mb-2">Welcome back</h1>
+        <div className="mb-8 text-center">
+          <h1 className="mb-2 font-display text-2xl font-extrabold text-text">Welcome back</h1>
           <p className="text-muted">Sign in to your account</p>
         </div>
 
@@ -87,7 +87,7 @@ export default function SignInPage() {
           </Button>
         </form>
 
-        <p className="text-center mt-6 text-muted">
+        <p className="mt-6 text-center text-muted">
           Don't have an account?{" "}
           <Link href="/sign-up" className="text-accent hover:underline">
             Sign up
