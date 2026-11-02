@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HUSKY: 0
+  VGGISH_URL: https://github.com/krogdorlok/myuzik-web/releases/download/vggish-v1/vggish.tflite
+  VGGISH_SHA256: 2de04c6dc3678354c421d24be7513bac593a7f3d1703da8cdf7cd65c716b8d08
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+          activate-environment: true
+      - run: uv pip install -r pyproject.toml --extra dev
+      - run: ruff check . && ruff format --check .
+      - run: pytest -q
+
+  frontend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run type-check
+      - run: npm run test:ci
+      - run: npm run build
+
+  e2e:
+    needs: [backend, frontend]
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: myuzik
+          POSTGRES_PASSWORD: myuzik
+          POSTGRES_DB: myuzik
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    env:
+      CI: true
+      DATABASE_URL: postgresql+asyncpg://myuzik:myuzik@localhost:5432/myuzik
+      JWT_SECRET: ci-only-not-a-secret-ci-only-not-a-secret
+      FRONTEND_URL: http://localhost:3000
+      VGGISH_PATH: models/vggish.tflite
+      BACKEND_URL: http://localhost:8000
+      NEXT_PUBLIC_WS_URL: ws://localhost:8000/ws/listen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        id: vggish
+        with:
+          path: backend/models
+          key: vggish-${{ env.VGGISH_SHA256 }}
+      - name: Download VGGish (checksum-pinned)
+        if: steps.vggish.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p backend/models
+          curl -fsSL -o backend/models/vggish.tflite "$VGGISH_URL"
+          echo "$VGGISH_SHA256  backend/models/vggish.tflite" | sha256sum -c
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+          activate-environment: true
+      - name: Start API
+        working-directory: backend
+        run: |
+          uv pip install -r pyproject.toml
+          alembic upgrade head
+          nohup uvicorn app.main:app --port 8000 --ws-max-size 65536 > ../api.log 2>&1 &
+          curl -fs --retry 30 --retry-connrefused --retry-delay 1 localhost:8000/health
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Playwright (5 browsers/devices) and Lighthouse budgets
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps
+          npm run build
+          npx playwright test
+          npm run perf
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+            api.log
+          retention-days: 7
