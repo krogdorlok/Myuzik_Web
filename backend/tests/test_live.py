@@ -72,3 +72,29 @@ def test_other_users_cannot_resume_a_session(ws_client: TestClient):
     url = f"/ws/listen?ticket={issue_ticket(uuid.uuid4())}&session={session}"
     with ws_client.websocket_connect(url, headers=ORIGIN) as ws:
         assert ws.receive_json()["sessionId"] != session
+
+
+def test_per_user_quota_applies_to_resumes(ws_client: TestClient):
+    user = uuid.uuid4()
+    url = lambda: f"/ws/listen?ticket={issue_ticket(user)}"  # noqa: E731
+    with (
+        ws_client.websocket_connect(url(), headers=ORIGIN) as a,
+        ws_client.websocket_connect(url(), headers=ORIGIN) as b,
+    ):
+        a.receive_json(), b.receive_json()
+        with pytest.raises(WebSocketDisconnect) as exc:
+            with ws_client.websocket_connect(url(), headers=ORIGIN):
+                pass
+        assert exc.value.code == 1013
+
+
+def test_flooded_frames_are_not_all_inferred(ws_client: TestClient):
+    with ws_client.websocket_connect(f"/ws/listen?ticket={issue_ticket(uuid.uuid4())}", headers=ORIGIN) as ws:
+        ws.receive_json()
+        for seq in range(1, 7):
+            ws.send_bytes(frame(seq))
+        ws.send_bytes(b"x")  # sentinel: the reply to this marks the end of the burst
+        replies = []
+        while (msg := ws.receive_json())["type"] != "error":
+            replies.append(msg["seq"])
+        assert replies == [2]
