@@ -10,10 +10,18 @@ test.setTimeout(120_000);
 
 test("measure live streaming", async ({ page, browserName }) => {
   let socket: WebSocketRoute | null = null;
-  // Playwright proxies the socket (adding one local hop) so the run can force a disconnect mid-stream.
+  const issued: string[] = [];
+  const requested: (string | null)[] = [];
+  // Playwright proxies the socket (adding one local hop) so the run can force a disconnect mid-stream,
+  // and records which session the server issued vs. which one the client asked to resume.
   await page.routeWebSocket(/\/ws\/listen/, (ws) => {
     socket = ws;
-    ws.connectToServer();
+    requested.push(new URL(ws.url()).searchParams.get("session"));
+    const server = ws.connectToServer();
+    server.onMessage((m) => {
+      if (typeof m === "string" && m.includes('"ready"')) issued.push(JSON.parse(m).sessionId);
+      ws.send(m);
+    });
   });
   await signUp(page);
   await page.goto("/live");
@@ -25,7 +33,8 @@ test("measure live streaming", async ({ page, browserName }) => {
   await expect(page.getByText("Listening", { exact: true })).toBeVisible();
 
   await page.waitForTimeout(30_000);
-  await socket!.close({ code: 1011, reason: "measurement: forced drop" });
+  // 4000-4999 is the range a browser may send; 1011 would be rejected and the drop would never happen.
+  await socket!.close({ code: 4000, reason: "measurement: forced drop" });
   await page.waitForTimeout(30_000);
 
   const stats = page.getByTestId("live-stats");
@@ -45,6 +54,7 @@ test("measure live streaming", async ({ page, browserName }) => {
     frames_sent: Number(await read("frames")),
     frames_dropped: Number(await read("dropped")),
     reconnects: Number(await read("reconnects")),
+    session_resumed: issued.length === 2 && issued[1] === issued[0],
     reconnect_recovery_ms: (await read("recovery"))
       .split(",")
       .filter(Boolean)
@@ -57,5 +67,7 @@ test("measure live streaming", async ({ page, browserName }) => {
   };
   writeFileSync("../docs/metrics/live.json", JSON.stringify(result, null, 2) + "\n");
   expect(result.reconnects).toBe(1);
+  expect(requested).toEqual([null, issued[0]]);
+  expect(issued[1]).toBe(issued[0]); // the server resumed the same session (and its frame buffer)
   expect(predictions).toBeGreaterThan(40);
 });

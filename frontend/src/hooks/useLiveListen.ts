@@ -1,6 +1,6 @@
 "use client";
 // Live Listen state: capture → LiveSocket → a transcript-like genre timeline. Pauses while the tab is hidden.
-// Scores are smoothed with an EMA so a single noisy 2.88 s window can't flip the genre.
+// Scores are smoothed with an EMA to damp flicker from individual noisy 2.88 s windows.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { startCapture, type Capture, type LiveSource } from "@/lib/liveAudio";

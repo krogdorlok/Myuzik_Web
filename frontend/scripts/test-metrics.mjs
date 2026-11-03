@@ -1,4 +1,4 @@
-// `npm run metrics:tests [-- --projects=chromium,firefox]`: runs the backend, unit and e2e suites and writes
+// `BACKEND_PYTHON=… npm run metrics:tests [-- --projects=chromium,firefox]`: runs the backend, unit and e2e suites and writes
 // counts, coverage and the browser projects that actually ran to docs/metrics/tests.json.
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -10,10 +10,8 @@ const projects = arg
 const run = (cmd, opts = {}) =>
   execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"], ...opts });
 
-const pytest = run("~/.venvs/myuzik-backend/bin/python -m pytest -q -p no:warnings", {
-  cwd: "../backend",
-  shell: "/bin/zsh",
-});
+const python = process.env.BACKEND_PYTHON ?? "python";
+const pytest = run(`${python} -m pytest -q -p no:warnings`, { cwd: "../backend" });
 const [, backendPassed] = pytest.match(/(\d+) passed/) ?? [];
 
 run("npx vitest run --coverage --reporter=json --outputFile=coverage/vitest.json");
@@ -21,11 +19,23 @@ const vitest = JSON.parse(readFileSync("coverage/vitest.json", "utf8"));
 const coverage = JSON.parse(readFileSync("coverage/coverage-summary.json", "utf8")).total;
 
 const e2e = JSON.parse(
-  run(`npx playwright test --reporter=json ${projects.map((p) => `--project=${p}`).join(" ")}`, {
-    env: { ...process.env, PERF: "1" },
-    maxBuffer: 64 << 20,
-  }),
+  run(
+    `npx playwright test --reporter=json --grep-invert "lighthouse|first-load" ${projects.map((p) => `--project=${p}`).join(" ")}`,
+    {
+      env: { ...process.env, PERF: "1" },
+      maxBuffer: 64 << 20,
+    },
+  ),
 );
+const failing = (suites, file) =>
+  suites.reduce(
+    (n, s) =>
+      n +
+      (s.file?.endsWith(file) ? s.specs.filter((spec) => !spec.ok).length : 0) +
+      failing(s.suites ?? [], file),
+    0,
+  );
+
 const result = {
   backend_pytest_passed: Number(backendPassed),
   unit_tests: { total: vitest.numTotalTests, passed: vitest.numPassedTests },
@@ -37,7 +47,7 @@ const result = {
     skipped: e2e.stats.skipped,
   },
   e2e_projects: projects,
-  axe_violations: e2e.stats.unexpected === 0 ? 0 : "see failing a11y tests",
+  failing_axe_specs: failing(e2e.suites, "a11y.spec.ts"),
   command: `cd frontend && npm run metrics:tests${arg ? ` -- ${arg}` : ""}`,
   commit: run("git rev-parse --short HEAD").trim(),
   date: new Date().toISOString().slice(0, 10),

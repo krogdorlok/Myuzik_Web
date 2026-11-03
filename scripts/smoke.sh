@@ -16,5 +16,5 @@ check "nonce CSP present" yes "$(curl -sI "$web/sign-in" | grep -qi "^content-se
 check "proxy blocks token endpoints" 404 "$(status -X POST "$web/api/proxy/auth%2Flogin")"
 check "auth rejects cross-origin" 403 "$(status -X POST -H 'Origin: https://evil.example' -H 'Content-Type: application/json' -d '{}' "$web/api/auth/login")"
 check "api requires auth" 401 "$(status "$api/api/v1/history")"
-check "websocket rejects missing ticket" 403 "$(status -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' "$api/ws/listen")"
+check "websocket rejects missing ticket" 403 "$(status -H "Origin: $web" -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' "$api/ws/listen")"
 exit "$failed"

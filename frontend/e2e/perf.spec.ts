@@ -4,11 +4,13 @@ import { execSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { gzipSync } from "node:zlib";
 import { chromium, expect, test } from "@playwright/test";
 import { signUp } from "./helpers";
 
-test.skip(!process.env.PERF, "perf run only");
+test.skip(
+  ({ browserName, isMobile }) => !process.env.PERF || browserName !== "chromium" || isMobile,
+  "npm run perf only (desktop Chromium drives Lighthouse)",
+);
 test.describe.configure({ mode: "serial" });
 test.setTimeout(240_000);
 
@@ -31,42 +33,24 @@ const save = (patch: Record<string, unknown>) =>
     ) + "\n",
   );
 
-test("first-load JS per route", () => {
-  const manifest = JSON.parse(readFileSync(".next/app-build-manifest.json", "utf8"))
-    .pages as Record<string, string[]>;
-  const kb = (files: string[]) =>
-    Math.round(
-      files
-        .filter((f) => f.endsWith(".js"))
-        .reduce((n, f) => n + gzipSync(readFileSync(join(".next", f))).length, 0) / 102.4,
-    ) / 10;
-  const routes = [
-    "/(auth)/sign-in/page",
-    "/(app)/page",
-    "/(app)/history/page",
-    "/(app)/insights/page",
-    "/(app)/live/page",
-  ];
-  const baseline = Object.fromEntries(
-    [
-      ...readFileSync("../docs/metrics/perf-baseline.txt", "utf8").matchAll(
-        /^[├└┌] ○ (\/\S*)\s+\S+ k?B\s+([\d.]+) kB/gm,
-      ),
-    ].map((m) => [m[1], Number(m[2])]),
+// Parses `next build`'s own route table, the same source as the M0 baseline, so before/after compare like for like.
+const firstLoad = (file: string) =>
+  Object.fromEntries(
+    [...readFileSync(file, "utf8").matchAll(/^[├└┌] [○ƒ] (\/\S*)\s+\S+ k?B\s+([\d.]+) kB/gm)].map(
+      (m) => [m[1], Number(m[2])],
+    ),
   );
-  const pretty = (r: string) => r.replace(/\/\([^)]+\)/, "").replace(/\/page$/, "") || "/";
+
+test("first-load JS per route", () => {
+  const before = firstLoad("../docs/metrics/perf-baseline.txt");
+  const after = firstLoad("node_modules/.cache/next-build.txt");
+  const routes = ["/sign-in", "/", "/history", "/insights", "/live"];
   save({
     first_load_js_kb: Object.fromEntries(
-      routes.map((r) => [
-        pretty(r),
-        {
-          before: baseline[pretty(r)] ?? null,
-          after: kb([...new Set([...manifest["/layout"], ...manifest[r]])]),
-        },
-      ]),
+      routes.map((r) => [r, { before: before[r] ?? null, after: after[r] }]),
     ),
     first_load_js_note:
-      "gzip of route + layout chunks from .next/app-build-manifest.json; 'before' is the M0 build",
+      "First Load JS as printed by `next build`; 'before' is the M0 build (perf-baseline.txt)",
   });
 });
 

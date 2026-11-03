@@ -82,10 +82,24 @@ test("?next= cannot redirect off-site after sign-in", async ({ page, baseURL }) 
   const email = await signUp(page);
   await page.getByLabel(/Account menu/).click();
   await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
   await page.goto("/sign-in?next=/%5Cevil.example");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill("correct-horse-battery");
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL((url) => url.pathname !== "/sign-in");
   expect(new URL(page.url()).origin).toBe(baseURL);
+});
+
+test("the vitals beacon rejects junk instead of erroring", async ({ request }) => {
+  const post = (data: string) =>
+    request.post("/api/vitals", {
+      data: Buffer.from(data),
+      headers: { "content-type": "application/json" },
+    });
+  expect((await post('{"name":"LCP","value":1,"page":42}')).status()).toBe(204);
+  expect((await post("{not json")).status()).toBe(400);
+  expect(
+    (await post(JSON.stringify({ name: "LCP", value: 1, page: "x".repeat(2000) }))).status(),
+  ).toBe(413);
 });
