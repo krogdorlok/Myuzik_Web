@@ -102,4 +102,8 @@ test("the vitals beacon rejects junk instead of erroring", async ({ request }) =
   expect(
     (await post(JSON.stringify({ name: "LCP", value: 1, page: "x".repeat(2000) }))).status(),
   ).toBe(413);
+  // 600 × "é" is 600 characters but 1,200 bytes: the cap must count bytes.
+  expect(
+    (await post(JSON.stringify({ name: "LCP", value: 1, page: "é".repeat(600) }))).status(),
+  ).toBe(413);
 });

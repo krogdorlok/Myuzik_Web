@@ -6,8 +6,12 @@ const NAMES = new Set(["LCP", "CLS", "INP", "FCP", "TTFB"]);
 const MAX_BYTES = 1024;
 
 export async function POST(request: NextRequest) {
-  const text = await request.text();
-  if (text.length > MAX_BYTES) return new NextResponse(null, { status: 413 });
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_BYTES) {
+    return new NextResponse(null, { status: 413 });
+  }
+  const bytes = await request.arrayBuffer();
+  if (bytes.byteLength > MAX_BYTES) return new NextResponse(null, { status: 413 });
+  const text = new TextDecoder().decode(bytes);
   let body: unknown;
   try {
     body = JSON.parse(text);

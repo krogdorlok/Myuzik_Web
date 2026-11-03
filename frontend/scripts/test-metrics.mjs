@@ -1,6 +1,6 @@
 // `BACKEND_PYTHON=… npm run metrics:tests [-- --projects=chromium,firefox]`: runs the backend, unit and e2e suites and writes
 // counts, coverage and the browser projects that actually ran to docs/metrics/tests.json.
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 
 const arg = process.argv.find((a) => a.startsWith("--projects="));
@@ -11,7 +11,10 @@ const run = (cmd, opts = {}) =>
   execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"], ...opts });
 
 const python = process.env.BACKEND_PYTHON ?? "python";
-const pytest = run(`${python} -m pytest -q -p no:warnings`, { cwd: "../backend" });
+const pytest = execFileSync(python, ["-m", "pytest", "-q", "-p", "no:warnings"], {
+  cwd: "../backend",
+  encoding: "utf8",
+});
 const [, backendPassed] = pytest.match(/(\d+) passed/) ?? [];
 
 run("npx vitest run --coverage --reporter=json --outputFile=coverage/vitest.json");
