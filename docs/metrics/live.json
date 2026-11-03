@@ -1,0 +1,22 @@
+{
+  "latency_ms": {
+    "p50": 22,
+    "p95": 28
+  },
+  "latency_definition": "frame sent → matching prediction received (network + server inference); excludes the 0.96 s of audio a frame takes to fill",
+  "predictions_per_minute": 57,
+  "upstream_bytes_per_second": 31362,
+  "raw_capture_bytes_per_second": 192000,
+  "frames_sent": 61,
+  "frames_dropped": 0,
+  "reconnects": 1,
+  "session_resumed": true,
+  "reconnect_recovery_ms": [
+    379
+  ],
+  "duration_s": 60,
+  "setup": "chromium, file mode, synthetic 30 s WAV looped, local backend, through Playwright's WebSocket proxy",
+  "command": "cd frontend && npm run measure:live",
+  "commit": "636566d",
+  "date": "2026-11-03"
+}

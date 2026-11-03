@@ -1,0 +1,26 @@
+{
+  "backend_pytest_passed": 37,
+  "unit_tests": {
+    "total": 93,
+    "passed": 93
+  },
+  "unit_coverage_pct": {
+    "lines": 99.33,
+    "branches": 93.83
+  },
+  "e2e": {
+    "passed": 50,
+    "failed": 0,
+    "flaky": 0,
+    "skipped": 4
+  },
+  "e2e_projects": [
+    "chromium",
+    "firefox",
+    "mobile-chrome"
+  ],
+  "failing_axe_specs": 0,
+  "command": "cd frontend && npm run metrics:tests -- --projects=chromium,firefox,mobile-chrome",
+  "commit": "636566d",
+  "date": "2026-11-03"
+}

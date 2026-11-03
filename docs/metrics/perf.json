@@ -1,0 +1,54 @@
+{
+  "first_load_js_kb": {
+    "/sign-in": {
+      "before": 98,
+      "after": 99.2
+    },
+    "/": {
+      "before": 136,
+      "after": 106
+    },
+    "/history": {
+      "before": 106,
+      "after": 99.9
+    },
+    "/insights": {
+      "before": 91.6,
+      "after": 99.1
+    },
+    "/live": {
+      "before": null,
+      "after": 101
+    }
+  },
+  "first_load_js_note": "First Load JS as printed by `next build`; 'before' is the M0 build (perf-baseline.txt)",
+  "commit": "636566d",
+  "date": "2026-11-03",
+  "lighthouse_mobile": {
+    "/": {
+      "performance": 1,
+      "accessibility": 1,
+      "lcp_ms": 629,
+      "cls": 0
+    },
+    "/insights": {
+      "performance": 1,
+      "accessibility": 1,
+      "lcp_ms": 1062,
+      "cls": 0
+    },
+    "/live": {
+      "performance": 1,
+      "accessibility": 1,
+      "lcp_ms": 622,
+      "cls": 0
+    },
+    "/sign-in": {
+      "performance": 1,
+      "accessibility": 1,
+      "lcp_ms": 622,
+      "cls": 0
+    }
+  },
+  "lighthouse_note": "Lighthouse 12 default mobile config (simulated Moto G Power, slow 4G), production build, local machine"
+}

@@ -9,7 +9,7 @@ Next.js 14 · TypeScript (strict) · Tailwind · AudioWorklet · WebSockets · F
 ## What's interesting here
 
 - **Real-time audio in the browser.** An AudioWorklet runs on the audio thread. It downmixes the input, applies a windowed-sinc anti-alias filter, resamples to 16 kHz and sends Int16 frames of 0.96 s each, one VGGish window. A `LiveSocket` class streams them over a WebSocket. It reconnects with exponential backoff and jitter, resumes the server-side session, and drops frames when the socket backs up instead of queueing stale audio. Latency is measured per frame by matching the sequence number the server echoes back.
-- **A transcript-style UI for a live signal.** The timeline follows the newest segment unless you scroll up, then offers *Jump to live*. Scores pass through an exponential moving average so one noisy window can't flip the genre. Genre changes, and nothing else, are announced to screen readers through `aria-live`.
+- **A transcript-style UI for a live signal.** The timeline follows the newest segment unless you scroll up, then offers *Jump to live*. Scores pass through an exponential moving average, which damps flicker from individual noisy windows. Genre changes, and nothing else, are announced to screen readers through `aria-live`.
 - **Security that holds up when someone pokes at it:**
   - The JWT lives only in an httpOnly, SameSite=Lax cookie set by a Next.js route handler.
   - The proxy only forwards allow-listed routes, so `auth%2Flogin` can't be smuggled through.
@@ -23,6 +23,16 @@ Next.js 14 · TypeScript (strict) · Tailwind · AudioWorklet · WebSockets · F
 ## Measured
 
 <!-- metrics:start -->
+| Metric | Result | Source |
+| --- | --- | --- |
+| Live latency (frame → prediction) | p50 22 ms · p95 28 ms | [live.json](docs/metrics/live.json) |
+| Live upstream bandwidth | 31.4 kB/s (84% below raw 48 kHz float capture) | [live.json](docs/metrics/live.json) |
+| Reconnect recovery after a forced drop | 379 ms, 0 frames dropped in 60 s | [live.json](docs/metrics/live.json) |
+| Lighthouse mobile (/sign-in, /, /insights, /live) | performance 100 · accessibility 100 | [perf.json](docs/metrics/perf.json) |
+| First Load JS, / | 136 kB → 106 kB | [perf.json](docs/metrics/perf.json) |
+| Model accuracy (held-out GTZAN, n=197) | 84.8% · macro-F1 0.844 | [model.json](docs/metrics/model.json) |
+| VGGish LiteRT vs TensorFlow (2.88 s window) | 14.8 ms vs 33 ms, max embedding diff 6.6e-6 | [model-export.json](docs/metrics/model-export.json) |
+| Tests | 93 unit (99.33% lines, 93.83% branches) · 50 Playwright on chromium, firefox, mobile-chrome · 37 pytest · 0 failing axe specs | [tests.json](docs/metrics/tests.json) |
 <!-- metrics:end -->
 
 ## Architecture
@@ -62,7 +72,7 @@ Requirements: Node 22+, Python 3.11, PostgreSQL, and `vggish.tflite` (from the G
 # backend
 cd backend
 cp .env.example .env            # set DATABASE_URL and JWT_SECRET (openssl rand -hex 32)
-uv venv -p 3.11 && uv pip install -r pyproject.toml --extra dev
+uv venv -p 3.11 && source .venv/bin/activate && uv pip install -r pyproject.toml --extra dev
 curl -fLo models/vggish.tflite --create-dirs https://github.com/krogdorlok/Myuzik_Web/releases/download/vggish-v1/vggish.tflite
 alembic upgrade head && uvicorn app.main:app --port 8000 --ws-max-size 65536
 
@@ -77,11 +87,11 @@ npm install && npm run dev      # http://localhost:3000
 | Command | What it runs |
 | --- | --- |
 | `cd backend && pytest` | API, auth, upload validation, history ownership, WebSocket protocol and limits, mocked Spotify, real-model checks |
-| `cd frontend && npm run test:ci` | Vitest + React Testing Library for every component and hook; fails below 85% line or branch coverage |
+| `cd frontend && npm run test:ci` | Vitest + React Testing Library for components, hooks and client libraries; fails below 85% line or branch coverage. The Web Audio graph, server-only code and the vitals beacon are excluded from unit coverage and exercised by Playwright instead |
 | `cd frontend && npm run test:e2e` | Playwright on Chromium, Firefox, WebKit, Pixel 7 and iPhone 14: auth and security, upload, history, insights, Live Listen with a scripted disconnect, and axe on every page |
 | `npm run perf` / `npm run measure:live` | Lighthouse mobile budgets and First Load JS; live latency and recovery numbers. Both write to `docs/metrics/` |
 
-CI runs all of this on every pull request ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs pytest, the unit suite, all five Playwright projects and the Lighthouse budgets on every pull request. Two things are opt-in and run locally instead: `npm run measure:live`, which needs a backend and takes a minute, and the real-model pytest checks, which need `models/vggish.tflite` plus `MYUZIK_SAMPLE_CLIP=<any audio file>`.
 
 ## Deploy
 
