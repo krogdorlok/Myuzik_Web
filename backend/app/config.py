@@ -1,6 +1,6 @@
 """Typed settings loaded from the environment / .env."""
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +16,15 @@ class Settings(BaseSettings):
     vggish_path: str = "./models/vggish.tflite"
     classifier_path: str = "./app/ml/classifier.npz"
     log_level: str = "INFO"
+
+    @field_validator("database_url")
+    @classmethod
+    def use_asyncpg(cls, v: str) -> str:
+        """Accept the plain postgres(ql):// URLs hosting providers hand out."""
+        for prefix in ("postgres://", "postgresql://"):
+            if v.startswith(prefix):
+                return "postgresql+asyncpg://" + v.removeprefix(prefix)
+        return v
 
 
 settings = Settings()
